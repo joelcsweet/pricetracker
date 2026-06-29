@@ -161,8 +161,8 @@
   .card-meta strong { color: var(--ink); }
 
   .price-current {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
 
@@ -183,11 +183,11 @@
     border-radius: 20px;
   }
 
-  .badge-ok            { background: var(--sage-soft);  color: var(--sage); }
+  .badge-ok            { background: var(--rule);       color: var(--ink-soft); }
   .badge-hit           { background: var(--sage-soft);  color: var(--sage); }
   .badge-attention     { background: var(--gold-soft);  color: var(--gold); }
   .badge-error         { background: var(--clay-soft);  color: var(--clay); }
-  .badge-pending       { background: var(--rule);       color: var(--ink-soft); }
+  .badge-pending       { background: var(--rule);       color: var(--ink-faint); }
 
   .card-url {
     font-size: 12px;
@@ -305,7 +305,25 @@
     transition: border-color .15s;
   }
 
-  .field input:focus { border-color: var(--ink); }
+  .field input:focus  { border-color: var(--ink); }
+
+  .field textarea {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    resize: vertical;
+    min-height: 90px;
+    transition: border-color .15s;
+  }
+
+  .field textarea:focus { border-color: var(--ink); }
+  .field .field-hint { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
 
   .modal-actions {
     display: flex;
@@ -389,8 +407,9 @@
       <input id="fName" type="text" placeholder="e.g. Sony WH-1000XM5">
     </div>
     <div class="field">
-      <label>URL</label>
-      <input id="fUrl" type="url" placeholder="https://…">
+      <label>URLs — one per line</label>
+      <textarea id="fUrl" placeholder="https://www.amazon.com.au/…&#10;https://www.jbhifi.com.au/…"></textarea>
+      <p class="field-hint">Paste one URL per line. All will be checked; the lowest price found is used.</p>
     </div>
     <div class="field">
       <label>Target price (AUD)</label>
@@ -527,7 +546,7 @@ function cardHtml(p) {
       </div>
 
       <div class="card-url">
-        <a href="${escHtml(p.url)}" target="_blank" rel="noopener">${escHtml(truncate(p.url, 72))}</a>
+        ${p.url.split('\n').map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 72))}</a>`).join('<br>')}
       </div>
 
       ${sparklineSection}
@@ -539,11 +558,11 @@ function cardHtml(p) {
 
 function badgeHtml(status) {
   const map = {
-    ok:              ['badge-ok',        '✓ On track'],
+    ok:              ['badge-ok',        '↑ Above target'],
     target_hit:      ['badge-hit',       '🎉 Target hit!'],
-    needs_attention: ['badge-attention', '⚠ Needs attention'],
-    error:           ['badge-error',     '✕ Error'],
-    pending:         ['badge-pending',   '· Pending'],
+    needs_attention: ['badge-attention', '⚠ Enter price manually'],
+    error:           ['badge-error',     '✕ Check failed'],
+    pending:         ['badge-pending',   '· Not checked yet'],
   };
   const [cls, label] = map[status] || map.pending;
   return `<span class="badge ${cls}">${label}</span>`;
@@ -624,7 +643,7 @@ function closeModal(e) {
 
 async function saveProduct() {
   const name         = document.getElementById('fName').value.trim();
-  const url          = document.getElementById('fUrl').value.trim();
+  const url          = document.getElementById('fUrl').value.trim().split('\n').map(u => u.trim()).filter(Boolean).join('\n');
   const target_price = parseFloat(document.getElementById('fTarget').value);
 
   if (!name || !url || isNaN(target_price) || target_price <= 0) {
