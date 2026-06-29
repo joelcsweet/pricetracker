@@ -635,7 +635,7 @@ async function saveManualUrlPrice(productId, urlIdx) {
   try {
     await api(`/products/${productId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ last_price: bestPrice, status: newStatus }),
+      body: JSON.stringify({ last_price: bestPrice, status: newStatus, url_results: JSON.stringify(results) }),
     });
     const idx = products.findIndex(x => x.id === productId);
     if (idx >= 0) {
