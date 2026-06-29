@@ -196,8 +196,22 @@
     margin-bottom: 10px;
   }
 
-  .card-url a { color: var(--ink-faint); text-decoration: none; }
+  .card-url a { color: var(--ink-soft); text-decoration: none; }
   .card-url a:hover { text-decoration: underline; }
+
+  .url-price-list { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .url-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .url-price-row .url-price-val { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .url-price-row .url-price-val.hit { color: var(--sage); }
+  .url-price-row .url-price-none { color: var(--ink-faint); white-space: nowrap; }
+  .url-price-row .url-price-method { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+  .url-price-row .url-link { color: var(--ink-faint); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  .url-price-row .url-link:hover { text-decoration: underline; }
 
   .card-checked {
     font-size: 11px;
@@ -541,19 +555,44 @@ function cardHtml(p) {
       </div>
 
       <div class="card-meta">
-        <span>Current: <strong>${priceDisplay}</strong></span>
         <span>Target: <strong>$${Number(p.target_price).toFixed(2)} AUD</strong></span>
       </div>
 
-      <div class="card-url">
-        ${p.url.split('\n').map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 72))}</a>`).join('<br>')}
-      </div>
+      <ul class="url-price-list">
+        ${urlPriceRows(p)}
+      </ul>
 
       ${sparklineSection}
       ${manualEntry}
 
       <div class="card-checked">${checkedStr}</div>
     </div>`;
+}
+
+function urlPriceRows(p) {
+  const urls      = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  const results   = (() => { try { return JSON.parse(p.url_results || '[]'); } catch { return []; } })();
+
+  return urls.map(u => {
+    const r      = results.find(r => r.url === u);
+    const price  = r?.price;
+    const method = r?.method;
+    const isHit  = price != null && price <= p.target_price;
+
+    const priceHtml = price != null
+      ? `<span class="url-price-val${isHit ? ' hit' : ''}">$${Number(price).toFixed(2)}</span>`
+      : `<span class="url-price-none">—</span>`;
+
+    const methodHtml = method
+      ? `<span class="url-price-method">· ${method}</span>`
+      : '';
+
+    return `<li class="url-price-row">
+      ${priceHtml}
+      ${methodHtml}
+      <a class="url-link" href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 60))}</a>
+    </li>`;
+  }).join('');
 }
 
 function badgeHtml(status) {
@@ -701,7 +740,8 @@ async function checkOne(id) {
     if (idx >= 0) {
       products[idx] = { ...products[idx], ...result,
         last_price: result.price, last_checked_at: result.checked_at,
-        extraction_method: result.method };
+        extraction_method: result.method,
+        url_results: JSON.stringify(result.url_results ?? []) };
     }
     showToast(result.price != null
       ? `${result.price != null ? '$' + result.price.toFixed(2) : '—'} — ${statusLabel(result.status)}`
