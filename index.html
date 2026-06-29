@@ -212,6 +212,40 @@
   .url-price-row .url-price-method { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
   .url-price-row .url-link { color: var(--ink-faint); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
   .url-price-row .url-link:hover { text-decoration: underline; }
+  .url-price-row .url-row-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+  .url-price-row:hover .url-row-actions { opacity: 1; }
+
+  .url-inline-edit {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 2px;
+  }
+  .url-inline-edit input {
+    flex: 1;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 5px 8px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+  }
+  .url-inline-edit input:focus { border-color: var(--ink); }
+
+  .add-url-btn {
+    font-size: 12px;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    padding: 2px 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-top: 4px;
+  }
+  .add-url-btn:hover { color: var(--ink-soft); }
 
   .card-checked {
     font-size: 11px;
@@ -560,7 +594,16 @@ function cardHtml(p) {
 
       <ul class="url-price-list">
         ${urlPriceRows(p)}
+        <li id="add-url-row-${p.id}" style="display:none;list-style:none">
+          <div class="url-inline-edit">
+            <input type="url" id="add-url-input-${p.id}" placeholder="https://…"
+                   onkeydown="if(event.key==='Enter')addUrlToProduct('${p.id}');if(event.key==='Escape')toggleAddUrl('${p.id}')">
+            <button class="btn-sage btn-sm" onclick="addUrlToProduct('${p.id}')">Add</button>
+            <button class="btn-secondary btn-sm" onclick="toggleAddUrl('${p.id}')">Cancel</button>
+          </div>
+        </li>
       </ul>
+      <button class="add-url-btn" onclick="toggleAddUrl('${p.id}')">+ Add URL</button>
 
       ${sparklineSection}
       ${manualEntry}
@@ -570,10 +613,10 @@ function cardHtml(p) {
 }
 
 function urlPriceRows(p) {
-  const urls      = p.url.split('\n').map(u => u.trim()).filter(Boolean);
-  const results   = (() => { try { return JSON.parse(p.url_results || '[]'); } catch { return []; } })();
+  const urls    = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  const results = (() => { try { return JSON.parse(p.url_results || '[]'); } catch { return []; } })();
 
-  return urls.map(u => {
+  return urls.map((u, i) => {
     const r      = results.find(r => r.url === u);
     const price  = r?.price;
     const method = r?.method;
@@ -583,16 +626,91 @@ function urlPriceRows(p) {
       ? `<span class="url-price-val${isHit ? ' hit' : ''}">$${Number(price).toFixed(2)}</span>`
       : `<span class="url-price-none">—</span>`;
 
-    const methodHtml = method
-      ? `<span class="url-price-method">· ${method}</span>`
-      : '';
+    const methodHtml = method ? `<span class="url-price-method">· ${method}</span>` : '';
 
-    return `<li class="url-price-row">
-      ${priceHtml}
-      ${methodHtml}
-      <a class="url-link" href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 60))}</a>
-    </li>`;
+    return `
+      <li class="url-price-row" id="url-row-${p.id}-${i}">
+        ${priceHtml}
+        ${methodHtml}
+        <a class="url-link" href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 55))}</a>
+        <span class="url-row-actions">
+          <button class="btn-secondary btn-sm" onclick="startEditUrl('${p.id}',${i})" title="Edit URL">✎</button>
+          ${urls.length > 1 ? `<button class="btn-secondary btn-sm" onclick="deleteUrl('${p.id}',${i})" title="Remove URL">✕</button>` : ''}
+        </span>
+      </li>
+      <li id="url-edit-${p.id}-${i}" style="display:none;list-style:none">
+        <div class="url-inline-edit">
+          <input type="url" id="url-input-${p.id}-${i}" value="${escHtml(u)}"
+                 onkeydown="if(event.key==='Enter')saveEditUrl('${p.id}',${i});if(event.key==='Escape')cancelEditUrl('${p.id}',${i})">
+          <button class="btn-sage btn-sm" onclick="saveEditUrl('${p.id}',${i})">Save</button>
+          <button class="btn-secondary btn-sm" onclick="cancelEditUrl('${p.id}',${i})">Cancel</button>
+        </div>
+      </li>`;
   }).join('');
+}
+
+function startEditUrl(productId, idx) {
+  document.getElementById(`url-row-${productId}-${idx}`).style.display  = 'none';
+  document.getElementById(`url-edit-${productId}-${idx}`).style.display = 'list-item';
+  document.getElementById(`url-input-${productId}-${idx}`).focus();
+  document.getElementById(`url-input-${productId}-${idx}`).select();
+}
+
+function cancelEditUrl(productId, idx) {
+  document.getElementById(`url-row-${productId}-${idx}`).style.display  = '';
+  document.getElementById(`url-edit-${productId}-${idx}`).style.display = 'none';
+}
+
+async function saveEditUrl(productId, idx) {
+  const newUrl = document.getElementById(`url-input-${productId}-${idx}`).value.trim();
+  if (!newUrl) { showToast('URL cannot be empty.'); return; }
+
+  const p    = products.find(x => x.id === productId);
+  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  urls[idx]  = newUrl;
+
+  await patchUrls(p, urls.join('\n'));
+}
+
+async function deleteUrl(productId, idx) {
+  const p    = products.find(x => x.id === productId);
+  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  urls.splice(idx, 1);
+  await patchUrls(p, urls.join('\n'));
+}
+
+async function addUrlToProduct(productId) {
+  const input = document.getElementById(`add-url-input-${productId}`);
+  const newUrl = input?.value.trim();
+  if (!newUrl) { showToast('Paste a URL first.'); return; }
+
+  const p    = products.find(x => x.id === productId);
+  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  urls.push(newUrl);
+  await patchUrls(p, urls.join('\n'));
+}
+
+function toggleAddUrl(productId) {
+  const row   = document.getElementById(`add-url-row-${productId}`);
+  const input = document.getElementById(`add-url-input-${productId}`);
+  const shown = row.style.display !== 'none';
+  row.style.display = shown ? 'none' : 'list-item';
+  if (!shown) { input.value = ''; input.focus(); }
+}
+
+async function patchUrls(p, newUrlString) {
+  try {
+    const updated = await api(`/products/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ url: newUrlString }),
+    });
+    const idx = products.findIndex(x => x.id === p.id);
+    if (idx >= 0) products[idx] = { ...products[idx], ...updated };
+    renderCard(p.id);
+    showToast('URL updated.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
 }
 
 function badgeHtml(status) {
