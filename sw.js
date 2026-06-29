@@ -1,5 +1,5 @@
 const CACHE = 'pricetracker-v1';
-const PRECACHE = ['/'];
+const PRECACHE = ['/pricetracker/', '/pricetracker/index.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
