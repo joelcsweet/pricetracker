@@ -212,9 +212,6 @@
   .url-price-row .url-price-method { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
   .url-price-row .url-link { color: var(--ink-faint); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
   .url-price-row .url-link:hover { text-decoration: underline; }
-  .url-price-row .url-row-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
-  .url-price-row:hover .url-row-actions { opacity: 1; }
-
   .url-inline-edit {
     display: flex;
     gap: 6px;
@@ -234,18 +231,6 @@
   }
   .url-inline-edit input:focus { border-color: var(--ink); }
 
-  .add-url-btn {
-    font-size: 12px;
-    color: var(--ink-faint);
-    background: none;
-    border: none;
-    padding: 2px 0;
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    margin-top: 4px;
-  }
-  .add-url-btn:hover { color: var(--ink-soft); }
 
   .card-checked {
     font-size: 11px;
@@ -557,15 +542,6 @@ function cardHtml(p) {
     ? `Last checked ${relTime(p.last_checked_at)}${p.extraction_method ? ` · via ${p.extraction_method}` : ''}`
     : 'Not yet checked';
 
-  const manualEntry = (p.status === 'needs_attention') ? `
-    <div class="manual-entry">
-      <p>⚠️ Couldn't extract price automatically. Enter it manually:</p>
-      <div class="manual-entry-row">
-        <input type="number" min="0" step="0.01" placeholder="Current price (AUD)"
-               id="manual-${p.id}" onkeydown="if(event.key==='Enter')submitManual('${p.id}')">
-        <button class="btn-sage btn-sm" onclick="submitManual('${p.id}')">Save</button>
-      </div>
-    </div>` : '';
 
   const sparklineSection = `<div class="chart-wrap" id="chart-${p.id}"></div>`;
 
@@ -594,19 +570,9 @@ function cardHtml(p) {
 
       <ul class="url-price-list">
         ${urlPriceRows(p)}
-        <li id="add-url-row-${p.id}" style="display:none;list-style:none">
-          <div class="url-inline-edit">
-            <input type="url" id="add-url-input-${p.id}" placeholder="https://…"
-                   onkeydown="if(event.key==='Enter')addUrlToProduct('${p.id}');if(event.key==='Escape')toggleAddUrl('${p.id}')">
-            <button class="btn-sage btn-sm" onclick="addUrlToProduct('${p.id}')">Add</button>
-            <button class="btn-secondary btn-sm" onclick="toggleAddUrl('${p.id}')">Cancel</button>
-          </div>
-        </li>
       </ul>
-      <button class="add-url-btn" onclick="toggleAddUrl('${p.id}')">+ Add URL</button>
 
       ${sparklineSection}
-      ${manualEntry}
 
       <div class="card-checked">${checkedStr}</div>
     </div>`;
@@ -628,86 +594,56 @@ function urlPriceRows(p) {
 
     const methodHtml = method ? `<span class="url-price-method">· ${method}</span>` : '';
 
+    const manualInputHtml = price == null ? `
+      <li style="list-style:none;margin-top:4px;padding-left:0">
+        <div class="url-inline-edit">
+          <input type="number" min="0" step="0.01" id="manual-url-${p.id}-${i}"
+                 placeholder="Enter price manually"
+                 onkeydown="if(event.key==='Enter')saveManualUrlPrice('${p.id}',${i})">
+          <button class="btn-sage btn-sm" onclick="saveManualUrlPrice('${p.id}',${i})">Save</button>
+        </div>
+      </li>` : '';
+
     return `
-      <li class="url-price-row" id="url-row-${p.id}-${i}">
+      <li class="url-price-row">
         ${priceHtml}
         ${methodHtml}
-        <a class="url-link" href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 55))}</a>
-        <span class="url-row-actions">
-          <button class="btn-secondary btn-sm" onclick="startEditUrl('${p.id}',${i})" title="Edit URL">✎</button>
-          ${urls.length > 1 ? `<button class="btn-secondary btn-sm" onclick="deleteUrl('${p.id}',${i})" title="Remove URL">✕</button>` : ''}
-        </span>
+        <a class="url-link" href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(truncate(u, 60))}</a>
       </li>
-      <li id="url-edit-${p.id}-${i}" style="display:none;list-style:none">
-        <div class="url-inline-edit">
-          <input type="url" id="url-input-${p.id}-${i}" value="${escHtml(u)}"
-                 onkeydown="if(event.key==='Enter')saveEditUrl('${p.id}',${i});if(event.key==='Escape')cancelEditUrl('${p.id}',${i})">
-          <button class="btn-sage btn-sm" onclick="saveEditUrl('${p.id}',${i})">Save</button>
-          <button class="btn-secondary btn-sm" onclick="cancelEditUrl('${p.id}',${i})">Cancel</button>
-        </div>
-      </li>`;
+      ${manualInputHtml}`;
   }).join('');
 }
 
-function startEditUrl(productId, idx) {
-  document.getElementById(`url-row-${productId}-${idx}`).style.display  = 'none';
-  document.getElementById(`url-edit-${productId}-${idx}`).style.display = 'list-item';
-  document.getElementById(`url-input-${productId}-${idx}`).focus();
-  document.getElementById(`url-input-${productId}-${idx}`).select();
-}
+async function saveManualUrlPrice(productId, urlIdx) {
+  const input = document.getElementById(`manual-url-${productId}-${urlIdx}`);
+  const price = parseFloat(input?.value);
+  if (!input || isNaN(price) || price <= 0) { showToast('Enter a valid price.'); return; }
 
-function cancelEditUrl(productId, idx) {
-  document.getElementById(`url-row-${productId}-${idx}`).style.display  = '';
-  document.getElementById(`url-edit-${productId}-${idx}`).style.display = 'none';
-}
+  const p       = products.find(x => x.id === productId);
+  const urls    = p.url.split('\n').map(u => u.trim()).filter(Boolean);
+  const results = (() => { try { return JSON.parse(p.url_results || '[]'); } catch { return []; } })();
 
-async function saveEditUrl(productId, idx) {
-  const newUrl = document.getElementById(`url-input-${productId}-${idx}`).value.trim();
-  if (!newUrl) { showToast('URL cannot be empty.'); return; }
+  // Update or insert the result for this URL
+  const existing = results.find(r => r.url === urls[urlIdx]);
+  if (existing) { existing.price = price; existing.method = 'manual'; }
+  else          { results.push({ url: urls[urlIdx], price, method: 'manual' }); }
 
-  const p    = products.find(x => x.id === productId);
-  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
-  urls[idx]  = newUrl;
+  // Best price across all URLs
+  const bestPrice = Math.min(...results.filter(r => r.price != null).map(r => r.price));
+  const newStatus = bestPrice <= p.target_price ? 'target_hit' : 'ok';
 
-  await patchUrls(p, urls.join('\n'));
-}
-
-async function deleteUrl(productId, idx) {
-  const p    = products.find(x => x.id === productId);
-  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
-  urls.splice(idx, 1);
-  await patchUrls(p, urls.join('\n'));
-}
-
-async function addUrlToProduct(productId) {
-  const input = document.getElementById(`add-url-input-${productId}`);
-  const newUrl = input?.value.trim();
-  if (!newUrl) { showToast('Paste a URL first.'); return; }
-
-  const p    = products.find(x => x.id === productId);
-  const urls = p.url.split('\n').map(u => u.trim()).filter(Boolean);
-  urls.push(newUrl);
-  await patchUrls(p, urls.join('\n'));
-}
-
-function toggleAddUrl(productId) {
-  const row   = document.getElementById(`add-url-row-${productId}`);
-  const input = document.getElementById(`add-url-input-${productId}`);
-  const shown = row.style.display !== 'none';
-  row.style.display = shown ? 'none' : 'list-item';
-  if (!shown) { input.value = ''; input.focus(); }
-}
-
-async function patchUrls(p, newUrlString) {
   try {
-    const updated = await api(`/products/${p.id}`, {
+    await api(`/products/${productId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ url: newUrlString }),
+      body: JSON.stringify({ last_price: bestPrice, status: newStatus }),
     });
-    const idx = products.findIndex(x => x.id === p.id);
-    if (idx >= 0) products[idx] = { ...products[idx], ...updated };
-    renderCard(p.id);
-    showToast('URL updated.');
+    const idx = products.findIndex(x => x.id === productId);
+    if (idx >= 0) {
+      products[idx] = { ...products[idx], last_price: bestPrice, status: newStatus,
+                        url_results: JSON.stringify(results) };
+    }
+    renderCard(productId);
+    showToast('Price saved.');
   } catch (e) {
     showToast('Error: ' + e.message);
   }
@@ -901,28 +837,6 @@ function renderCard(id) {
   if (p._history?.length > 1) drawSparkline(p);
 }
 
-// ── Manual price entry ────────────────────────────────────────────────────────
-async function submitManual(id) {
-  const input = document.getElementById(`manual-${id}`);
-  const price = parseFloat(input?.value);
-  if (!input || isNaN(price) || price <= 0) {
-    showToast('Enter a valid price.');
-    return;
-  }
-
-  try {
-    const updated = await api(`/products/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ last_price: price, status: price <= products.find(x=>x.id===id)?.target_price ? 'target_hit' : 'ok' }),
-    });
-    const idx = products.findIndex(x => x.id === id);
-    if (idx >= 0) products[idx] = { ...products[idx], ...updated };
-    renderCard(id);
-    showToast('Price saved.');
-  } catch (e) {
-    showToast('Error: ' + e.message);
-  }
-}
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 async function deleteProduct(id) {
