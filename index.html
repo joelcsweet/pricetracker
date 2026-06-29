@@ -623,9 +623,9 @@ async function saveManualUrlPrice(productId, urlIdx) {
   const newStatus = bestPrice <= p.target_price ? 'target_hit' : 'ok';
 
   try {
-    await api(`/products/${productId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ last_price: bestPrice, status: newStatus, url_results: JSON.stringify(results) }),
+    await api(`/products/${productId}/manual-price`, {
+      method: 'POST',
+      body: JSON.stringify({ price: bestPrice, url_results: JSON.stringify(results) }),
     });
     const idx = products.findIndex(x => x.id === productId);
     if (idx >= 0) {
@@ -633,6 +633,7 @@ async function saveManualUrlPrice(productId, urlIdx) {
                         url_results: JSON.stringify(results) };
     }
     renderCard(productId);
+    await loadAndDrawSparkline(productId);
     showToast('Price saved.');
   } catch (e) {
     showToast('Error: ' + e.message);
