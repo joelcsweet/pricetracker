@@ -1,4 +1,4 @@
-const CACHE = 'pricetracker-v1';
+const CACHE = 'pricetracker-v2';
 const PRECACHE = ['/pricetracker/', '/pricetracker/index.html'];
 
 self.addEventListener('install', e => {
@@ -20,10 +20,11 @@ self.addEventListener('fetch', e => {
   if (e.request.url.includes('workers.dev')) return;
   if (e.request.method !== 'GET') return;
 
-  const isHTML = e.request.mode === 'navigate';
+  const isHTML     = e.request.mode === 'navigate';
+  const isManifest = e.request.url.endsWith('manifest.json');
 
-  if (isHTML) {
-    // Network-first for HTML so code updates show immediately
+  // Network-first for HTML and the manifest so updates (incl. start_url) always win
+  if (isHTML || isManifest) {
     e.respondWith(
       fetch(e.request)
         .then(res => {
@@ -31,12 +32,12 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, clone));
           return res;
         })
-        .catch(() => caches.match(e.request).then(r => r || caches.match('/')))
+        .catch(() => caches.match(e.request).then(r => r || caches.match('/pricetracker/')))
     );
     return;
   }
 
-  // Cache-first for static assets (fonts, icons)
+  // Cache-first for other static assets (fonts, icons)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
