@@ -1,6 +1,6 @@
 {
-  "name": "PriceTracker",
-  "short_name": "Prices",
+  "name": "Price Tracker",
+  "short_name": "Price Tracker",
   "description": "Track product prices and get alerts when targets are hit",
   "start_url": "/",
   "scope": "/",
