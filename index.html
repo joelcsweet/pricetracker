@@ -508,7 +508,7 @@ function render() {
 
   // Draw sparklines after DOM settles
   products.forEach(p => {
-    if (p._history?.length > 1) drawSparkline(p);
+    if (p._history?.length >= 1) drawSparkline(p);
   });
 }
 
@@ -663,7 +663,7 @@ function badgeHtml(status) {
 async function loadAndDrawSparkline(productId) {
   try {
     const history = await api(`/products/${productId}/history`);
-    if (history.length < 2) return;
+    if (history.length < 1) return;
     const p = products.find(x => x.id === productId);
     if (p) { p._history = history; drawSparkline(p); }
   } catch { /* silently skip */ }
@@ -678,6 +678,19 @@ function drawSparkline(p) {
   const max    = Math.max(...prices);
   const range  = max - min || 1;
   const W = 600, H = 56;
+
+  // Single data point: draw a flat centred line so a chart shows from the first check
+  if (prices.length === 1) {
+    const y = H / 2;
+    wrap.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+           style="width:100%;height:100%;display:block">
+        <line x1="0" y1="${y}" x2="${W}" y2="${y}"
+              stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="${W - 3}" cy="${y}" r="3" fill="#7c3aed"/>
+      </svg>`;
+    return;
+  }
 
   const pts = prices.map((price, i) => {
     const x = (i / (prices.length - 1)) * W;
@@ -841,7 +854,7 @@ function renderCard(id) {
   const tmp = document.createElement('div');
   tmp.innerHTML = cardHtml(p);
   card.replaceWith(tmp.firstElementChild);
-  if (p._history?.length > 1) drawSparkline(p);
+  if (p._history?.length >= 1) drawSparkline(p);
 }
 
 
