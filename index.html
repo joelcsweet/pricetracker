@@ -13,8 +13,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --brand:        #7c3aed;
-    --brand-dark:   #6d28d9;
+    --brand:        #8b5cf6;
+    --brand-dark:   #7c3aed;
     --brand-soft:   #ede9fe;
     --brand-faint:  #f5f3ff;
     --green:        #16a34a;
@@ -23,14 +23,14 @@
     --amber-soft:   #fef3c7;
     --red:          #dc2626;
     --red-soft:     #fee2e2;
-    --bg:           #f4f4f8;
+    --bg:           #f4f3f8;
     --surface:      #ffffff;
-    --border:       #e5e7eb;
-    --border-strong:#d1d5db;
-    --text:         #111827;
-    --text-soft:    #6b7280;
-    --text-faint:   #9ca3af;
-    --shadow:       0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07);
+    --border:       #e8e6f0;
+    --border-strong:#d4d0e4;
+    --text:         #1e1a2e;
+    --text-soft:    #6e6a82;
+    --text-faint:   #a09cb8;
+    --shadow:       0 1px 3px rgba(30,26,46,.05), 0 4px 16px rgba(30,26,46,.07);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,7 +45,7 @@
 
   /* ── Top bar ──────────────────────────────────────────────────────────── */
   .topbar {
-    background: var(--brand);
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
     padding: 0 24px;
     height: 56px;
     display: flex;
@@ -182,7 +182,7 @@
 
   .card-name {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.3;
     color: var(--text);
   }
@@ -206,8 +206,8 @@
     align-items: center;
     gap: 4px;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .3px;
+    font-weight: 600;
+    letter-spacing: .2px;
     text-transform: uppercase;
     padding: 3px 9px;
     border-radius: 20px;
@@ -529,7 +529,7 @@ function cardHtml(p) {
   const badge = badgeHtml(p.status);
 
   const checkedStr = p.last_checked_at
-    ? `Last checked ${relTime(p.last_checked_at)}${p.extraction_method ? ` · via ${p.extraction_method}` : ''}`
+    ? `Last checked ${relTime(p.last_checked_at)}`
     : 'Not yet checked';
 
 
@@ -800,8 +800,6 @@ async function checkOne(id) {
         url_results: JSON.stringify(result.url_results ?? []) };
     }
     if (result.status === 'target_hit') showToast(`✓ Target hit! $${result.price.toFixed(2)}`);
-    else if (result.price != null)      showToast(`$${result.price.toFixed(2)}`);
-    else                                showToast('Could not extract price. Enter manually.');
     await loadAndDrawSparkline(id);
   } catch (e) {
     showToast('Check failed: ' + e.message);
