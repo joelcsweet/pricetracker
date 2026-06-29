@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PriceTracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#FAF7F1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PriceTracker">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:        #FAF7F1;
+    --paper-raised: #FFFFFF;
+    --ink:          #2B2823;
+    --ink-soft:     #6B6358;
+    --ink-faint:    #A39B8C;
+    --rule:         #E4DDCD;
+    --rule-strong:  #D2C8B0;
+    --sage:         #6E8462;
+    --sage-soft:    #E4EADE;
+    --gold:         #C18C3C;
+    --gold-soft:    #F4E7CD;
+    --clay:         #B5563A;
+    --clay-soft:    #F4DED4;
+    --shadow:       0 1px 2px rgba(43,40,35,.04), 0 4px 14px rgba(43,40,35,.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 24px 100px;
+  }
+
+  @media (max-width: 600px) {
+    .app { padding: 28px 16px 90px; }
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────── */
+  .top-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -.3px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────────────────── */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 9px 16px;
+    transition: opacity .15s, transform .1s;
+  }
+
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn-secondary {
+    background: var(--paper-raised);
+    color: var(--ink);
+    border: 1.5px solid var(--rule-strong);
+  }
+
+  .btn-sage {
+    background: var(--sage);
+    color: #fff;
+  }
+
+  .btn-sm {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 6px;
+  }
+
+  .btn-icon {
+    padding: 7px 10px;
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────────────────── */
+  .product-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .card {
+    background: var(--paper-raised);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--rule);
+    padding: 18px 20px;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .card-name {
+    font-family: 'Source Serif 4', serif;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+
+  .card-meta strong { color: var(--ink); }
+
+  .price-current {
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .price-hit  { color: var(--sage); }
+  .price-miss { color: var(--ink); }
+  .price-none { color: var(--ink-faint); font-size: 16px; font-weight: 500; }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .badge-ok            { background: var(--sage-soft);  color: var(--sage); }
+  .badge-hit           { background: var(--sage-soft);  color: var(--sage); }
+  .badge-attention     { background: var(--gold-soft);  color: var(--gold); }
+  .badge-error         { background: var(--clay-soft);  color: var(--clay); }
+  .badge-pending       { background: var(--rule);       color: var(--ink-soft); }
+
+  .card-url {
+    font-size: 12px;
+    color: var(--ink-faint);
+    word-break: break-all;
+    margin-bottom: 10px;
+  }
+
+  .card-url a { color: var(--ink-faint); text-decoration: none; }
+  .card-url a:hover { text-decoration: underline; }
+
+  .card-checked {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 8px;
+  }
+
+  /* Manual price entry */
+  .manual-entry {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--gold-soft);
+    border-radius: 8px;
+    border: 1.5px solid #e6d09a;
+  }
+
+  .manual-entry p {
+    font-size: 13px;
+    color: #7a5c10;
+    margin-bottom: 8px;
+  }
+
+  .manual-entry-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .manual-entry input {
+    flex: 1;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 7px 10px;
+    border: 1.5px solid #d4b96a;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  /* Sparkline chart */
+  .chart-wrap {
+    margin-top: 12px;
+    height: 56px;
+    position: relative;
+  }
+
+  .chart-wrap canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+  }
+
+  /* ── Modal ───────────────────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(43,40,35,.45);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--paper-raised);
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(43,40,35,.18);
+    padding: 28px 28px 24px;
+    width: 100%;
+    max-width: 460px;
+  }
+
+  .modal h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+  }
+
+  .field input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .field input:focus { border-color: var(--ink); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 22px;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+  }
+
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* ── Toast ───────────────────────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 14px;
+    padding: 11px 20px;
+    border-radius: 24px;
+    box-shadow: 0 4px 18px rgba(43,40,35,.22);
+    transition: transform .25s ease;
+    z-index: 200;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Spinner ─────────────────────────────────────────────────────────── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="top-header">
+    <h1>PriceTracker</h1>
+  </div>
+  <p class="subtitle" id="subtitle">Loading…</p>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn-primary" onclick="openAddModal()">+ Add product</button>
+    <button class="btn-secondary" id="checkAllBtn" onclick="checkAll()">Check all now</button>
+  </div>
+
+  <!-- Product list -->
+  <div class="product-list" id="productList"></div>
+
+</div>
+
+<!-- Add / Edit modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h2 id="modalTitle">Add product</h2>
+    <div class="field">
+      <label>Product name</label>
+      <input id="fName" type="text" placeholder="e.g. Sony WH-1000XM5">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <input id="fUrl" type="url" placeholder="https://…">
+    </div>
+    <div class="field">
+      <label>Target price (AUD)</label>
+      <input id="fTarget" type="number" min="0" step="0.01" placeholder="e.g. 299.00">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" id="modalSaveBtn" onclick="saveProduct()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// Replace these with your actual Worker URL and API_SECRET
+const WORKER_URL = 'https://pricetracker.joelsweet.workers.dev';
+const API_SECRET = 'jP$3DdvU9LPsWx@e';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let products   = [];
+let editingId  = null;
+let checking   = new Set(); // product IDs currently being checked
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  await loadProducts();
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function api(path, options = {}) {
+  const res = await fetch(`${WORKER_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${API_SECRET}`,
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+}
+
+// ── Load & render ─────────────────────────────────────────────────────────────
+async function loadProducts() {
+  try {
+    products = await api('/products');
+    render();
+    updateSubtitle();
+  } catch (e) {
+    showToast('Could not load products: ' + e.message);
+  }
+}
+
+function render() {
+  const list = document.getElementById('productList');
+
+  if (!products.length) {
+    list.innerHTML = `
+      <div class="empty">
+        <div class="icon">🏷️</div>
+        <p>No products yet.<br>Add one to start tracking prices.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = products.map(p => cardHtml(p)).join('');
+
+  // Draw sparklines after DOM settles
+  products.forEach(p => {
+    if (p._history?.length > 1) drawSparkline(p);
+  });
+}
+
+function cardHtml(p) {
+  const isChecking = checking.has(p.id);
+  const priceStr   = p.last_price != null
+    ? `$${Number(p.last_price).toFixed(2)}`
+    : null;
+
+  const priceClass = p.status === 'target_hit' ? 'price-hit'
+                   : p.last_price != null       ? 'price-miss'
+                   :                              'price-none';
+
+  const priceDisplay = priceStr
+    ? `<span class="price-current ${priceClass}">${priceStr} AUD</span>`
+    : `<span class="price-none">Not yet checked</span>`;
+
+  const badge = badgeHtml(p.status);
+
+  const checkedStr = p.last_checked_at
+    ? `Last checked ${relTime(p.last_checked_at)}${p.extraction_method ? ` · via ${p.extraction_method}` : ''}`
+    : 'Not yet checked';
+
+  const manualEntry = (p.status === 'needs_attention') ? `
+    <div class="manual-entry">
+      <p>⚠️ Couldn't extract price automatically. Enter it manually:</p>
+      <div class="manual-entry-row">
+        <input type="number" min="0" step="0.01" placeholder="Current price (AUD)"
+               id="manual-${p.id}" onkeydown="if(event.key==='Enter')submitManual('${p.id}')">
+        <button class="btn-sage btn-sm" onclick="submitManual('${p.id}')">Save</button>
+      </div>
+    </div>` : '';
+
+  const sparklineSection = `<div class="chart-wrap" id="chart-${p.id}"></div>`;
+
+  const checkBtnLabel = isChecking
+    ? `<span class="spinner"></span>Checking…`
+    : '↻ Check';
+
+  return `
+    <div class="card" id="card-${p.id}">
+      <div class="card-head">
+        <div>
+          <div class="card-name">${escHtml(p.name)}</div>
+          <div style="margin-top:6px">${badge}</div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-secondary btn-sm" onclick="openEditModal('${p.id}')" title="Edit">✎</button>
+          <button class="btn-secondary btn-sm" onclick="checkOne('${p.id}')"
+                  ${isChecking ? 'disabled' : ''}>${checkBtnLabel}</button>
+          <button class="btn-secondary btn-sm btn-icon" onclick="deleteProduct('${p.id}')" title="Delete">✕</button>
+        </div>
+      </div>
+
+      <div class="card-meta">
+        <span>Current: <strong>${priceDisplay}</strong></span>
+        <span>Target: <strong>$${Number(p.target_price).toFixed(2)} AUD</strong></span>
+      </div>
+
+      <div class="card-url">
+        <a href="${escHtml(p.url)}" target="_blank" rel="noopener">${escHtml(truncate(p.url, 72))}</a>
+      </div>
+
+      ${sparklineSection}
+      ${manualEntry}
+
+      <div class="card-checked">${checkedStr}</div>
+    </div>`;
+}
+
+function badgeHtml(status) {
+  const map = {
+    ok:              ['badge-ok',        '✓ On track'],
+    target_hit:      ['badge-hit',       '🎉 Target hit!'],
+    needs_attention: ['badge-attention', '⚠ Needs attention'],
+    error:           ['badge-error',     '✕ Error'],
+    pending:         ['badge-pending',   '· Pending'],
+  };
+  const [cls, label] = map[status] || map.pending;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// ── Sparkline ──────────────────────────────────────────────────────────────────
+async function loadAndDrawSparkline(productId) {
+  try {
+    const history = await api(`/products/${productId}/history`);
+    if (history.length < 2) return;
+    const p = products.find(x => x.id === productId);
+    if (p) { p._history = history; drawSparkline(p); }
+  } catch { /* silently skip */ }
+}
+
+function drawSparkline(p) {
+  const wrap = document.getElementById(`chart-${p.id}`);
+  if (!wrap || !p._history?.length) return;
+
+  const prices = p._history.map(h => h.price);
+  const min    = Math.min(...prices);
+  const max    = Math.max(...prices);
+  const range  = max - min || 1;
+  const W = 600, H = 56;
+
+  const pts = prices.map((price, i) => {
+    const x = (i / (prices.length - 1)) * W;
+    const y = H - ((price - min) / range) * (H - 10) - 5;
+    return `${x},${y}`;
+  });
+
+  const targetY = H - ((p.target_price - min) / range) * (H - 10) - 5;
+  const targetLine = (p.target_price >= min && p.target_price <= max)
+    ? `<line x1="0" y1="${targetY}" x2="${W}" y2="${targetY}"
+             stroke="#C18C3C" stroke-width="1" stroke-dasharray="4,3" opacity=".7"/>`
+    : '';
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%;height:100%;display:block">
+      ${targetLine}
+      <polyline points="${pts.join(' ')}"
+                fill="none" stroke="#6E8462" stroke-width="2"
+                stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${pts[pts.length-1].split(',')[0]}"
+              cy="${pts[pts.length-1].split(',')[1]}"
+              r="3" fill="#6E8462"/>
+    </svg>`;
+}
+
+// ── Add / Edit modal ──────────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add product';
+  document.getElementById('fName').value   = '';
+  document.getElementById('fUrl').value    = '';
+  document.getElementById('fTarget').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fName').focus(), 50);
+}
+
+function openEditModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit product';
+  document.getElementById('fName').value   = p.name;
+  document.getElementById('fUrl').value    = p.url;
+  document.getElementById('fTarget').value = p.target_price;
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fName').focus(), 50);
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+async function saveProduct() {
+  const name         = document.getElementById('fName').value.trim();
+  const url          = document.getElementById('fUrl').value.trim();
+  const target_price = parseFloat(document.getElementById('fTarget').value);
+
+  if (!name || !url || isNaN(target_price) || target_price <= 0) {
+    showToast('Please fill in all fields with valid values.');
+    return;
+  }
+
+  const btn = document.getElementById('modalSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Saving…';
+
+  try {
+    if (editingId) {
+      const updated = await api(`/products/${editingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name, url, target_price }),
+      });
+      const idx = products.findIndex(x => x.id === editingId);
+      if (idx >= 0) products[idx] = { ...products[idx], ...updated };
+    } else {
+      const created = await api('/products', {
+        method: 'POST',
+        body: JSON.stringify({ name, url, target_price }),
+      });
+      products.unshift(created);
+    }
+
+    document.getElementById('modalOverlay').classList.remove('open');
+    render();
+    updateSubtitle();
+    showToast(editingId ? 'Product updated.' : 'Product added. Running first check…');
+
+    // If it's a new product, kick off an immediate check
+    if (!editingId) {
+      const newId = products[0].id;
+      checkOne(newId);
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Save';
+  }
+}
+
+// ── Check ─────────────────────────────────────────────────────────────────────
+async function checkOne(id) {
+  if (checking.has(id)) return;
+  checking.add(id);
+  renderCard(id);
+
+  try {
+    const result = await api(`/products/${id}/check`, { method: 'POST' });
+    const idx = products.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      products[idx] = { ...products[idx], ...result,
+        last_price: result.price, last_checked_at: result.checked_at,
+        extraction_method: result.method };
+    }
+    showToast(result.price != null
+      ? `${result.price != null ? '$' + result.price.toFixed(2) : '—'} — ${statusLabel(result.status)}`
+      : 'Could not extract price. Enter manually.');
+    await loadAndDrawSparkline(id);
+  } catch (e) {
+    showToast('Check failed: ' + e.message);
+  } finally {
+    checking.delete(id);
+    renderCard(id);
+  }
+}
+
+async function checkAll() {
+  const btn = document.getElementById('checkAllBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Checking all…';
+
+  try {
+    await api('/check-all', { method: 'POST' });
+    await loadProducts();
+    showToast('All products checked.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Check all now';
+  }
+}
+
+function renderCard(id) {
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = cardHtml(p);
+  card.replaceWith(tmp.firstElementChild);
+  if (p._history?.length > 1) drawSparkline(p);
+}
+
+// ── Manual price entry ────────────────────────────────────────────────────────
+async function submitManual(id) {
+  const input = document.getElementById(`manual-${id}`);
+  const price = parseFloat(input?.value);
+  if (!input || isNaN(price) || price <= 0) {
+    showToast('Enter a valid price.');
+    return;
+  }
+
+  try {
+    const updated = await api(`/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ last_price: price, status: price <= products.find(x=>x.id===id)?.target_price ? 'target_hit' : 'ok' }),
+    });
+    const idx = products.findIndex(x => x.id === id);
+    if (idx >= 0) products[idx] = { ...products[idx], ...updated };
+    renderCard(id);
+    showToast('Price saved.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!confirm(`Delete "${p?.name}"?`)) return;
+  try {
+    await api(`/products/${id}`, { method: 'DELETE' });
+    products = products.filter(x => x.id !== id);
+    render();
+    updateSubtitle();
+    showToast('Product deleted.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+}
+
+// ── Subtitle ──────────────────────────────────────────────────────────────────
+function updateSubtitle() {
+  const total = products.length;
+  const hits  = products.filter(p => p.status === 'target_hit').length;
+  const attn  = products.filter(p => p.status === 'needs_attention').length;
+
+  let txt = total === 0 ? 'No products tracked yet.'
+          : `${total} product${total !== 1 ? 's' : ''} tracked`;
+  if (hits)  txt += ` · ${hits} at target`;
+  if (attn)  txt += ` · ${attn} need attention`;
+
+  document.getElementById('subtitle').textContent = txt;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function statusLabel(s) {
+  return { ok:'On track', target_hit:'Target hit!', needs_attention:'Needs attention', error:'Error', pending:'Pending' }[s] || s;
+}
+
+function relTime(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+function escHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
