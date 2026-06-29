@@ -572,6 +572,10 @@ function urlPriceRows(p) {
   const urls    = p.url.split('\n').map(u => u.trim()).filter(Boolean);
   const results = (() => { try { return JSON.parse(p.url_results || '[]'); } catch { return []; } })();
 
+  // Only offer manual entry once a check has actually completed (not pending / mid-check)
+  const busy        = checking.has(p.id);
+  const checkedOnce = !!p.last_checked_at && p.status !== 'pending';
+
   return urls.map((u, i) => {
     const r      = results.find(r => r.url === u);
     const price  = r?.price;
@@ -580,11 +584,14 @@ function urlPriceRows(p) {
 
     const priceHtml = price != null
       ? `<span class="url-price-val${isHit ? ' hit' : ''}">$${Number(price).toFixed(2)}</span>`
-      : `<span class="url-price-none">—</span>`;
+      : busy
+        ? `<span class="url-price-none">…</span>`
+        : `<span class="url-price-none">—</span>`;
 
     const methodHtml = method ? `<span class="url-price-method">· ${method}</span>` : '';
 
-    const manualInputHtml = price == null ? `
+    const showManual = price == null && checkedOnce && !busy;
+    const manualInputHtml = showManual ? `
       <li style="list-style:none;margin-top:4px;padding-left:0">
         <div class="url-inline-edit">
           <input type="number" min="0" step="0.01" id="manual-url-${p.id}-${i}"
