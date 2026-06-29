@@ -485,6 +485,8 @@ async function loadProducts() {
     products = await api('/products');
     render();
     updateSubtitle();
+    // Load price history for all products so charts persist across devices/refreshes
+    products.forEach(p => loadAndDrawSparkline(p.id));
   } catch (e) {
     showToast('Could not load products: ' + e.message);
   }
@@ -640,7 +642,7 @@ async function saveManualUrlPrice(productId, urlIdx) {
 function badgeHtml(status) {
   const map = {
     ok:              ['badge-ok',        '↑ Above target'],
-    target_hit:      ['badge-hit',       '🎉 Target hit!'],
+    target_hit:      ['badge-hit',       '✓ Target hit!'],
     needs_attention: ['badge-attention', '⚠ Enter price manually'],
     error:           ['badge-error',     '✕ Check failed'],
     pending:         ['badge-pending',   '· Not checked yet'],
@@ -738,12 +740,23 @@ async function saveProduct() {
 
   try {
     if (editingId) {
+      const oldTarget = products.find(x => x.id === editingId)?.target_price;
       const updated = await api(`/products/${editingId}`, {
         method: 'PATCH',
         body: JSON.stringify({ name, url, target_price }),
       });
       const idx = products.findIndex(x => x.id === editingId);
       if (idx >= 0) products[idx] = { ...products[idx], ...updated };
+
+      // Auto-check if target price changed
+      if (Number(target_price) !== Number(oldTarget)) {
+        document.getElementById('modalOverlay').classList.remove('open');
+        render();
+        updateSubtitle();
+        showToast('Target changed — running new check…');
+        checkOne(editingId);
+        return;
+      }
     } else {
       const created = await api('/products', {
         method: 'POST',
@@ -785,9 +798,9 @@ async function checkOne(id) {
         extraction_method: result.method,
         url_results: JSON.stringify(result.url_results ?? []) };
     }
-    showToast(result.price != null
-      ? `${result.price != null ? '$' + result.price.toFixed(2) : '—'} — ${statusLabel(result.status)}`
-      : 'Could not extract price. Enter manually.');
+    if (result.status === 'target_hit') showToast(`✓ Target hit! $${result.price.toFixed(2)}`);
+    else if (result.price != null)      showToast(`$${result.price.toFixed(2)}`);
+    else                                showToast('Could not extract price. Enter manually.');
     await loadAndDrawSparkline(id);
   } catch (e) {
     showToast('Check failed: ' + e.message);
