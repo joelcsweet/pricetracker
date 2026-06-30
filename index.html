@@ -820,12 +820,14 @@ async function checkOne(id) {
         url_results: JSON.stringify(result.url_results ?? []) };
     }
     if (result.status === 'target_hit') showToast(`✓ Target hit! $${result.price.toFixed(2)}`);
-    await loadAndDrawSparkline(id);
+    // Don't update chart yet if manual entry is still needed — wait for saveManualUrlPrice
+    if (result.status !== 'needs_attention') await loadAndDrawSparkline(id);
   } catch (e) {
     showToast('Check failed: ' + e.message);
   } finally {
     checking.delete(id);
     renderCard(id);
+    updateSubtitle();
   }
 }
 
