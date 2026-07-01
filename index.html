@@ -627,19 +627,19 @@ async function saveManualUrlPrice(productId, urlIdx) {
 
   // Best price across all URLs
   const bestPrice = Math.min(...results.filter(r => r.price != null).map(r => r.price));
-  const newStatus = bestPrice <= p.target_price ? 'target_hit' : 'ok';
 
   try {
-    await api(`/products/${productId}/manual-price`, {
+    const saved = await api(`/products/${productId}/manual-price`, {
       method: 'POST',
       body: JSON.stringify({ price: bestPrice, url_results: JSON.stringify(results) }),
     });
     const idx = products.findIndex(x => x.id === productId);
     if (idx >= 0) {
-      products[idx] = { ...products[idx], last_price: bestPrice, status: newStatus,
+      products[idx] = { ...products[idx], last_price: bestPrice, status: saved.status,
                         url_results: JSON.stringify(results) };
     }
     renderCard(productId);
+    updateSubtitle();
     await loadAndDrawSparkline(productId);
     showToast('Price saved.');
   } catch (e) {

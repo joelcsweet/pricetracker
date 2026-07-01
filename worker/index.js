@@ -165,7 +165,7 @@ async function saveManualPrice(request, env, id) {
   const product   = results[0];
   const price     = Number(body.price);
   const now       = new Date().toISOString();
-  const newStatus  = price <= product.target_price ? 'target_hit' : 'ok';
+  let   newStatus  = price <= product.target_price ? 'target_hit' : 'ok';
 
   // Stamp each manual entry with today's date so carry-forward can check it
   let urlResults = body.url_results ?? product.url_results;
@@ -173,6 +173,8 @@ async function saveManualPrice(request, env, id) {
     const parsed = JSON.parse(urlResults || '[]');
     const stamped = parsed.map(r => r.method === 'manual' && r.price != null ? { ...r, checked_at: now } : r);
     urlResults = JSON.stringify(stamped);
+    // Other URLs still missing a price → keep prompting (target_hit keeps priority)
+    if (newStatus === 'ok' && stamped.some(r => r.price == null)) newStatus = 'needs_attention';
   } catch { /* leave as-is if malformed */ }
 
   await env.DB.prepare(
@@ -261,6 +263,11 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       } else {
         status = 'ok';
       }
+
+      // If any URL is still missing a price, flag for manual entry
+      // (target_hit keeps priority so the alert badge isn't hidden)
+      const anyMissing = urlResults.some(r => r.price == null);
+      if (anyMissing && status === 'ok') status = 'needs_attention';
     } else {
       status = 'needs_attention';
     }
