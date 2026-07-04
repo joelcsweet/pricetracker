@@ -46,9 +46,6 @@ export default {
     const checkOneMatch = path.match(/^\/products\/([^/]+)\/check$/);
     if (method === 'POST' && checkOneMatch)                  return checkOne(env, checkOneMatch[1]);
 
-    // POST /check-all  — manual trigger for all products
-    if (method === 'POST' && path === '/check-all')          return checkAll(env);
-
     // GET /products/:id/history  — price history for chart
     const historyMatch = path.match(/^\/products\/([^/]+)\/history$/);
     if (method === 'GET' && historyMatch)                    return getHistory(env, historyMatch[1]);
@@ -150,11 +147,6 @@ async function checkOne(env, id) {
   return respond(result);
 }
 
-async function checkAll(env) {
-  const summary = await runChecks(env);
-  return respond(summary);
-}
-
 async function saveManualPrice(request, env, id) {
   const body = await request.json().catch(() => null);
   if (!body?.price || isNaN(body.price)) return respond({ error: 'price required' }, 400);
@@ -220,6 +212,7 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       let { price: rPrice, method: rMethod } = extracted;
 
       // Carry forward today's manual entry if extraction still fails
+      let rCheckedAt = null;
       if (rPrice == null) {
         const prev = existingResults.find(r => r.url === u);
         const isSingleUrlIndividual = urls.length === 1 && individualCheck;
@@ -227,22 +220,21 @@ export async function checkProduct(product, env, { individualCheck = false } = {
         if (prev?.method === 'manual' && manualEnteredToday && !isSingleUrlIndividual) {
           rPrice  = prev.price;
           rMethod = 'manual';
+          // Keep the original entry stamp so later checks today still carry it forward
+          rCheckedAt = prev.checked_at;
         }
       }
 
-      urlResults.push({ url: u, price: rPrice, method: rMethod });
+      urlResults.push({ url: u, price: rPrice, method: rMethod, ...(rCheckedAt ? { checked_at: rCheckedAt } : {}) });
       if (rPrice != null && (price === null || rPrice < price)) {
         price  = rPrice;
         method = rMethod;
       }
     }
 
-    if (price != null) {
-      // Write history row
-      await env.DB.prepare(
-        `INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)`
-      ).bind(product.id, price, now).run();
+    const anyMissing = urlResults.some(r => r.price == null);
 
+    if (price != null) {
       // Determine status
       if (price <= product.target_price) {
         status = 'target_hit';
@@ -264,10 +256,18 @@ export async function checkProduct(product, env, { individualCheck = false } = {
         status = 'ok';
       }
 
-      // If any URL is still missing a price, flag for manual entry
+      // If any URL is still missing a price, hold off on the history row and
+      // flag for manual entry instead — the price found so far might not be
+      // the true best price once the missing URL is filled in.
       // (target_hit keeps priority so the alert badge isn't hidden)
-      const anyMissing = urlResults.some(r => r.price == null);
-      if (anyMissing && status === 'ok') status = 'needs_attention';
+      if (anyMissing && status === 'ok') {
+        status = 'needs_attention';
+      } else {
+        // Write history row only once we have a complete picture
+        await env.DB.prepare(
+          `INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)`
+        ).bind(product.id, price, now).run();
+      }
     } else {
       status = 'needs_attention';
     }

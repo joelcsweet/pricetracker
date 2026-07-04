@@ -1,0 +1,19 @@
+name = "pricetracker"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# ── Cron: runs daily at 8 pm UTC = 6 am AEST (UTC+10) ──────────────────────
+[triggers]
+crons = ["0 20 * * *"]
+
+# ── D1 database ─────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding  = "DB"
+database_name = "pricetracker-db"
+database_id   = "53ce159e-fe08-465a-862b-9d90c3f9db4a"
+
+# ── Secrets (set via `wrangler secret put <NAME>`) ───────────────────────────
+# SCRAPERAPI_KEY   — your ScraperAPI key
+# RESEND_API_KEY   — your Resend API key
+# RESEND_TO_EMAIL  — address to send alerts to
+# API_SECRET       — a random string the frontend sends as Bearer token
