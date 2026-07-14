@@ -572,7 +572,7 @@ function playFlipAnimation(firstRects) {
     card.style.transition = 'none';
     card.style.transform = `translate(${dx}px, ${dy}px)`;
     requestAnimationFrame(() => {
-      card.style.transition = 'transform .3s ease';
+      card.style.transition = 'transform .6s ease';
       card.style.transform = '';
       card.addEventListener('transitionend', () => {
         card.style.transition = '';
