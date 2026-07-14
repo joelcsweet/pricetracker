@@ -507,7 +507,12 @@ function render() {
     return;
   }
 
-  list.innerHTML = products.map(p => cardHtml(p)).join('');
+  // Paused products sink to the bottom; original created_at order is preserved
+  // within each group so resuming puts a product back where it was.
+  const isActive = p => p.active == null || Number(p.active) === 1;
+  const sorted = [...products].sort((a, b) => Number(isActive(b)) - Number(isActive(a)));
+
+  list.innerHTML = sorted.map(p => cardHtml(p)).join('');
 
   // Draw sparklines after DOM settles
   products.forEach(p => {
