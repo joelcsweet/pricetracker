@@ -172,6 +172,9 @@
   .card.status-error       { border-left-color: var(--red); }
   .card.status-pending     { border-left-color: var(--border-strong); }
 
+  .card.card-inactive { opacity: .55; border-left-color: var(--border-strong); }
+  .card.card-inactive:hover { opacity: .8; }
+
   .card-head {
     display: flex;
     align-items: flex-start;
@@ -219,6 +222,7 @@
   .badge-attention { background: var(--amber-soft); color: var(--amber); }
   .badge-error     { background: var(--red-soft);   color: var(--red); }
   .badge-pending   { background: var(--bg);         color: var(--text-faint); border: 1px solid var(--border); }
+  .badge-paused    { background: var(--bg);         color: var(--text-faint); border: 1px solid var(--border); }
 
   /* URL price rows */
   .url-price-list { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 4px; }
@@ -538,14 +542,19 @@ function cardHtml(p) {
     ? `<span class="spinner"></span>Checking…`
     : '↻ Check';
 
+  const isActive   = p.active == null || Number(p.active) === 1;
+  const pauseTitle = isActive ? 'Pause — skip daily check to save credits' : 'Resume daily checks';
+  const pauseIcon  = isActive ? '⏸' : '▶';
+
   return `
-    <div class="card status-${p.status || 'pending'}" id="card-${p.id}">
+    <div class="card status-${p.status || 'pending'}${isActive ? '' : ' card-inactive'}" id="card-${p.id}">
       <div class="card-head">
         <div>
           <div class="card-name">${escHtml(p.name)}</div>
-          ${badge}
+          ${isActive ? badge : `<span class="badge badge-paused">⏸ Paused</span>`}
         </div>
         <div class="card-actions">
+          <button class="btn-outline btn-sm btn-icon" onclick="toggleActive('${p.id}')" title="${pauseTitle}">${pauseIcon}</button>
           <button class="btn-outline btn-sm" onclick="openEditModal('${p.id}')" title="Edit">✎</button>
           <button class="btn-outline btn-sm" onclick="checkOne('${p.id}')"
                   ${isChecking ? 'disabled' : ''}>${checkBtnLabel}</button>
@@ -841,6 +850,27 @@ function renderCard(id) {
   if (p._history?.length >= 1) drawSparkline(p);
 }
 
+
+// ── Pause / resume ────────────────────────────────────────────────────────────
+async function toggleActive(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const isActive = p.active == null || Number(p.active) === 1;
+  const newActive = isActive ? 0 : 1;
+
+  try {
+    const updated = await api(`/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active: newActive }),
+    });
+    const idx = products.findIndex(x => x.id === id);
+    if (idx >= 0) products[idx] = { ...products[idx], ...updated };
+    renderCard(id);
+    showToast(newActive ? 'Resumed — will check daily again.' : 'Paused — skipped by the daily check.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+}
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 async function deleteProduct(id) {

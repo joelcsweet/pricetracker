@@ -5,7 +5,7 @@ import { checkProduct } from './index.js';
 
 export async function runChecks(env) {
   const { results: products } = await env.DB.prepare(
-    `SELECT * FROM products`
+    `SELECT * FROM products WHERE active = 1`
   ).all();
 
   const results = await Promise.allSettled(

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS products (
   status          TEXT NOT NULL DEFAULT 'pending',
   -- status values: pending | ok | target_hit | needs_attention | error
   extraction_method TEXT,                    -- which cascade step succeeded
+  active          INTEGER NOT NULL DEFAULT 1, -- 0 = paused, skipped by checks
   created_at      TEXT NOT NULL
 );
 

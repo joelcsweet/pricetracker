@@ -115,6 +115,7 @@ async function editProduct(request, env, id) {
   if (body.last_price   != null) { fields.push('last_price = ?');   values.push(Number(body.last_price)); }
   if (body.status       != null) { fields.push('status = ?');       values.push(body.status); }
   if (body.url_results  != null) { fields.push('url_results = ?');  values.push(body.url_results); }
+  if (body.active       != null) { fields.push('active = ?');       values.push(body.active ? 1 : 0); }
 
   if (fields.length === 0) return respond({ error: 'Nothing to update' }, 400);
 
