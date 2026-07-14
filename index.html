@@ -899,7 +899,7 @@ async function toggleActive(id) {
     });
     const idx = products.findIndex(x => x.id === id);
     if (idx >= 0) products[idx] = { ...products[idx], ...updated };
-    renderCard(id);
+    render();
     showToast(newActive ? 'Resumed — will check daily again.' : 'Paused — skipped by the daily check.');
   } catch (e) {
     showToast('Error: ' + e.message);
