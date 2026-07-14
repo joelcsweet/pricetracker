@@ -522,7 +522,7 @@ async function loadProducts() {
   }
 }
 
-function render() {
+function render({ animate = false } = {}) {
   const list = document.getElementById('productList');
 
   if (!products.length) {
@@ -534,6 +534,9 @@ function render() {
     return;
   }
 
+  // FLIP: record each card's current position before we reorder the DOM
+  const firstRects = animate ? captureCardRects() : null;
+
   // Paused products sink to the bottom; original created_at order is preserved
   // within each group so resuming puts a product back where it was.
   const isActive = p => p.active == null || Number(p.active) === 1;
@@ -544,6 +547,37 @@ function render() {
   // Draw sparklines after DOM settles
   products.forEach(p => {
     if (p._history?.length >= 1) drawSparkline(p);
+  });
+
+  if (animate) playFlipAnimation(firstRects);
+}
+
+function captureCardRects() {
+  const rects = {};
+  document.querySelectorAll('.card[id^="card-"]').forEach(card => {
+    rects[card.id] = card.getBoundingClientRect();
+  });
+  return rects;
+}
+
+function playFlipAnimation(firstRects) {
+  document.querySelectorAll('.card[id^="card-"]').forEach(card => {
+    const first = firstRects[card.id];
+    if (!first) return; // newly added card — just fade/slide in naturally
+    const last = card.getBoundingClientRect();
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+    if (!dx && !dy) return;
+
+    card.style.transition = 'none';
+    card.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      card.style.transition = 'transform .3s ease';
+      card.style.transform = '';
+      card.addEventListener('transitionend', () => {
+        card.style.transition = '';
+      }, { once: true });
+    });
   });
 }
 
@@ -899,7 +933,7 @@ async function toggleActive(id) {
     });
     const idx = products.findIndex(x => x.id === id);
     if (idx >= 0) products[idx] = { ...products[idx], ...updated };
-    render();
+    render({ animate: true });
     showToast(newActive ? 'Resumed — will check daily again.' : 'Paused — skipped by the daily check.');
   } catch (e) {
     showToast('Error: ' + e.message);
