@@ -153,8 +153,30 @@ function tryMetaTags(html) {
   return null;
 }
 
+// Headings that mark the start of "related/sponsored product" carousels —
+// scanning past this point picks up other products' prices, not the tracked
+// item's, since carousel entries repeat and can outweigh the real price
+// under the mode-based heuristic below.
+const CAROUSEL_MARKERS = [
+  /products related to this item/i,
+  /customers who (?:bought|viewed) this item also (?:bought|viewed)/i,
+  /what other items do customers buy after viewing this item/i,
+  /similar brands on amazon/i,
+  /customers who viewed this item also viewed/i,
+  /sponsored products related to this item/i,
+];
+
+function scopeToMainProduct(html) {
+  let cutoff = html.length;
+  for (const marker of CAROUSEL_MARKERS) {
+    const m = html.match(marker);
+    if (m && m.index < cutoff) cutoff = m.index;
+  }
+  return html.slice(0, cutoff);
+}
+
 function tryHeuristic(html) {
-  const text = html
+  const text = scopeToMainProduct(html)
     // Drop attribute-value text (e.g. aria-hidden="RRP: $36.95")
     .replace(/\s(?:aria-hidden|aria-label|alt|title)="[^"]*"/gi, '')
     // Drop whole elements that are visually hidden but present for screen readers
