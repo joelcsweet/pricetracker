@@ -70,11 +70,12 @@ async function fetchWithScraper(url, apiKey) {
 // ── Extraction pipeline (run on whatever HTML we have) ───────────────────────
 
 function runCascade(html, viaScraper = false, url = '') {
-  const prefix = viaScraper ? 'scraperapi-' : '';
+  const prefix   = viaScraper ? 'scraperapi-' : '';
+  const isAmazon = /^https?:\/\/(?:www\.)?amazon\./i.test(url);
 
   // Amazon pages: the buy box carries the canonical displayed price — use it
   // before the generic methods, which are noisy on Amazon's cluttered pages
-  if (/^https?:\/\/(?:www\.)?amazon\./i.test(url)) {
+  if (isAmazon) {
     const price = tryAmazonBuyBox(html);
     if (price != null) return { price, method: `${prefix}amazon-buybox` };
   }
@@ -87,6 +88,15 @@ function runCascade(html, viaScraper = false, url = '') {
 
   price = tryMetaTags(html);
   if (price != null) return { price, method: `${prefix}meta-tags` };
+
+  // Amazon + generic heuristic is a bad combination: if the buy box wasn't
+  // found, the HTML is likely a bot-check/altered page (Amazon blocking the
+  // fetch), and the heuristic will grab an unrelated price from whatever
+  // content is on that page. On the direct-fetch pass, bail out here so the
+  // caller escalates to ScraperAPI (JS-rendered, far less likely to be
+  // blocked) instead of trusting a low-confidence guess. Only allow the
+  // heuristic as a last resort once we're already on the rendered HTML.
+  if (isAmazon && !viaScraper) return { price: null, method: null };
 
   price = tryHeuristic(html);
   if (price != null) return { price, method: `${prefix}heuristic` };
