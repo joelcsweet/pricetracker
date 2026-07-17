@@ -15,7 +15,7 @@ export async function extract(url, apiKey) {
   // ── Pass 1: free direct fetch ────────────────────────────────────────────
   const directHtml = await fetchDirect(url);
   if (directHtml) {
-    const result = runCascade(directHtml);
+    const result = runCascade(directHtml, /* viaScraper= */ false, url);
     if (result.price != null) return result;
   }
 
@@ -25,7 +25,7 @@ export async function extract(url, apiKey) {
   console.log(`Direct fetch failed or no price found for ${url} — trying ScraperAPI`);
   const scraperHtml = await fetchWithScraper(url, apiKey);
   if (scraperHtml) {
-    const result = runCascade(scraperHtml, /* scraperApi= */ true);
+    const result = runCascade(scraperHtml, /* viaScraper= */ true, url);
     if (result.price != null) return result;
   }
 
@@ -69,8 +69,15 @@ async function fetchWithScraper(url, apiKey) {
 
 // ── Extraction pipeline (run on whatever HTML we have) ───────────────────────
 
-function runCascade(html, viaScraper = false) {
+function runCascade(html, viaScraper = false, url = '') {
   const prefix = viaScraper ? 'scraperapi-' : '';
+
+  // Amazon pages: the buy box carries the canonical displayed price — use it
+  // before the generic methods, which are noisy on Amazon's cluttered pages
+  if (/^https?:\/\/(?:www\.)?amazon\./i.test(url)) {
+    const price = tryAmazonBuyBox(html);
+    if (price != null) return { price, method: `${prefix}amazon-buybox` };
+  }
 
   let price = tryJsonLd(html);
   if (price != null) return { price, method: `${prefix}json-ld` };
@@ -88,6 +95,24 @@ function runCascade(html, viaScraper = false) {
 }
 
 // ── Extraction methods ───────────────────────────────────────────────────────
+
+function tryAmazonBuyBox(html) {
+  // Anchor on the buy-box price container (desktop and mobile ids)
+  const anchor = html.search(/id="(?:corePrice[^"]*|apex_desktop|apex_mobile)"/i);
+  if (anchor === -1) return null;
+  const section = html.slice(anchor, anchor + 20000);
+
+  // Canonical machine-readable price: <span class="a-offscreen">$215.00</span>
+  const off = section.match(/class="a-offscreen"[^>]*>\s*(?:A?\$|AUD\s*)([\d,]+(?:\.\d{1,2})?)/i);
+  if (off) return parsePrice(off[1]);
+
+  // Fallback: visible split price (a-price-whole + a-price-fraction)
+  const whole    = section.match(/a-price-whole[^>]*>\s*([\d,]+)/i);
+  const fraction = section.match(/a-price-fraction[^>]*>\s*(\d{1,2})/i);
+  if (whole) return parsePrice(`${whole[1]}.${fraction ? fraction[1] : '00'}`);
+
+  return null;
+}
 
 function tryJsonLd(html) {
   const scriptRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;

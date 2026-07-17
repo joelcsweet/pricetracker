@@ -30,5 +30,17 @@ CREATE TABLE IF NOT EXISTS alerts_sent (
   sent_at     TEXT NOT NULL
 );
 
+-- Per-URL diagnostic log: every check records what each URL returned
+-- (price NULL = extraction failed), so odd overnight results can be traced.
+CREATE TABLE IF NOT EXISTS url_check_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  url         TEXT NOT NULL,
+  price       REAL,
+  method      TEXT,
+  checked_at  TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_history(product_id, checked_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_sent_product   ON alerts_sent(product_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_url_check_log_product ON url_check_log(product_id, checked_at DESC);

@@ -50,6 +50,10 @@ export default {
     const historyMatch = path.match(/^\/products\/([^/]+)\/history$/);
     if (method === 'GET' && historyMatch)                    return getHistory(env, historyMatch[1]);
 
+    // GET /products/:id/url-history  — per-URL diagnostic log
+    const urlHistMatch = path.match(/^\/products\/([^/]+)\/url-history$/);
+    if (method === 'GET' && urlHistMatch)                    return getUrlHistory(env, urlHistMatch[1]);
+
     // POST /products/:id/manual-price  — save manual price + record in history
     const manualMatch = path.match(/^\/products\/([^/]+)\/manual-price$/);
     if (method === 'POST' && manualMatch)                    return saveManualPrice(request, env, manualMatch[1]);
@@ -168,6 +172,16 @@ async function saveManualPrice(request, env, id) {
     urlResults = JSON.stringify(stamped);
     // Other URLs still missing a price → keep prompting (target_hit keeps priority)
     if (newStatus === 'ok' && stamped.some(r => r.price == null)) newStatus = 'needs_attention';
+
+    // Diagnostic log for manual entries (mirrors checkProduct's per-URL log)
+    const manualRows = stamped.filter(r => r.method === 'manual' && r.price != null);
+    if (manualRows.length) {
+      await env.DB.batch(manualRows.map(r =>
+        env.DB.prepare(
+          `INSERT INTO url_check_log (product_id, url, price, method, checked_at) VALUES (?, ?, ?, 'manual', ?)`
+        ).bind(id, r.url, r.price, now)
+      ));
+    }
   } catch { /* leave as-is if malformed */ }
 
   await env.DB.prepare(
@@ -187,6 +201,16 @@ async function getHistory(env, id) {
      WHERE product_id = ?
      ORDER BY checked_at ASC
      LIMIT 90`
+  ).bind(id).all();
+  return respond(results);
+}
+
+async function getUrlHistory(env, id) {
+  const { results } = await env.DB.prepare(
+    `SELECT url, price, method, checked_at FROM url_check_log
+     WHERE product_id = ?
+     ORDER BY checked_at DESC
+     LIMIT 100`
   ).bind(id).all();
   return respond(results);
 }
@@ -275,6 +299,20 @@ export async function checkProduct(product, env, { individualCheck = false } = {
   } catch (err) {
     console.error(`checkProduct error for ${product.id}:`, err.message);
     status = 'error';
+  }
+
+  // Diagnostic log: what each URL returned this check (price NULL = failed).
+  // Never let a logging failure break the check itself.
+  try {
+    if (urlResults.length) {
+      await env.DB.batch(urlResults.map(r =>
+        env.DB.prepare(
+          `INSERT INTO url_check_log (product_id, url, price, method, checked_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(product.id, r.url, r.price ?? null, r.method ?? null, now)
+      ));
+    }
+  } catch (err) {
+    console.error(`url_check_log insert failed for ${product.id}:`, err.message);
   }
 
   // Update product row
