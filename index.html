@@ -616,7 +616,7 @@ function cardHtml(p) {
       <div class="card-head">
         <div>
           <div class="card-name">${escHtml(p.name)}</div>
-          ${isActive ? badge : `<span class="badge badge-paused">⏸ Paused</span>`}
+          ${isActive ? badge : `<span class="badge badge-paused">Paused</span>`}
         </div>
         <div class="card-actions">
           <button class="toggle-switch${isActive ? ' on' : ''}" onclick="toggleActive('${p.id}')"
@@ -955,11 +955,25 @@ async function deleteProduct(id) {
   }
 }
 
+// A product needs attention if its overall status says so, OR if any of its
+// URLs is still missing a price and awaiting manual entry (this can happen
+// even when status is 'target_hit', since a hit on one URL takes priority
+// over a sibling URL that still needs a manual price — see checkProduct).
+function needsManualEntry(p) {
+  if (p.status === 'needs_attention') return true;
+  try {
+    const results = JSON.parse(p.url_results || '[]');
+    return results.some(r => r.price == null);
+  } catch {
+    return false;
+  }
+}
+
 // ── Subtitle ──────────────────────────────────────────────────────────────────
 function updateSubtitle() {
   const total = products.length;
   const hits  = products.filter(p => p.status === 'target_hit').length;
-  const attn  = products.filter(p => p.status === 'needs_attention').length;
+  const attn  = products.filter(needsManualEntry).length;
 
   let txt = total === 0 ? 'No products tracked yet.'
           : `${total} product${total !== 1 ? 's' : ''} tracked`;
