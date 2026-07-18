@@ -73,11 +73,21 @@ function runCascade(html, viaScraper = false, url = '') {
   const prefix   = viaScraper ? 'scraperapi-' : '';
   const isAmazon = /^https?:\/\/(?:www\.)?amazon\./i.test(url);
 
-  // Amazon pages: the buy box carries the canonical displayed price — use it
-  // before the generic methods, which are noisy on Amazon's cluttered pages
+  // Amazon pages: check both the featured Buy Box price and the "Other
+  // sellers" teaser (e.g. "New (5) from $187.95") — a different, cheaper
+  // seller than the default Buy Box offer — and take whichever is lower,
+  // since that's the price actually available for the item.
   if (isAmazon) {
-    const price = tryAmazonBuyBox(html);
-    if (price != null) return { price, method: `${prefix}amazon-buybox` };
+    const buyBox       = tryAmazonBuyBox(html);
+    const otherSellers = tryAmazonOtherSellers(html);
+    const candidates = [
+      buyBox       != null ? { price: buyBox,       method: 'amazon-buybox' }        : null,
+      otherSellers != null ? { price: otherSellers, method: 'amazon-other-sellers' } : null,
+    ].filter(Boolean);
+    if (candidates.length) {
+      const best = candidates.reduce((a, b) => (b.price < a.price ? b : a));
+      return { price: best.price, method: `${prefix}${best.method}` };
+    }
   }
 
   let price = tryJsonLd(html);
@@ -122,6 +132,15 @@ function tryAmazonBuyBox(html) {
   if (whole) return parsePrice(`${whole[1]}.${fraction ? fraction[1] : '00'}`);
 
   return null;
+}
+
+function tryAmazonOtherSellers(html) {
+  // "New (5) from $187.95" / "Used (2) from $150.00" — a teaser for a
+  // cheaper offer from a different (non-Buy-Box) seller, shown as plain
+  // text near the buy box rather than in a machine-readable tag.
+  const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const m = text.match(/(?:new|used)\s*\(\d+\)\s*from\s*(?:A\$|\$|AUD\s*)([\d,]+(?:\.\d{1,2})?)/i);
+  return m ? parsePrice(m[1]) : null;
 }
 
 function tryJsonLd(html) {
