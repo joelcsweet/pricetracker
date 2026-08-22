@@ -273,11 +273,9 @@ async function getUrlHistory(env, id) {
 // ── Single-product check (used by both checkOne and runChecks) ────────────────
 
 export async function checkProduct(product, env, { individualCheck = false } = {}) {
-  const now   = new Date().toISOString();
-  const today = aestDate(now);
+  const now = new Date().toISOString();
 
-  const existingResults  = (() => { try { return JSON.parse(product.url_results || '[]'); } catch { return []; } })();
-  const wasCheckedToday  = aestDate(product.last_checked_at) === today;
+  const existingResults = (() => { try { return JSON.parse(product.url_results || '[]'); } catch { return []; } })();
 
   let price      = null;
   let method     = null;
@@ -292,16 +290,18 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       const extracted = await extract(u, scraperApiKey);
       let { price: rPrice, method: rMethod } = extracted;
 
-      // Carry forward today's manual entry if extraction still fails
+      // Carry forward a manual entry if it's less than 24h old and extraction still fails
       let rCheckedAt = null;
       if (rPrice == null) {
         const prev = existingResults.find(r => r.url === u);
         const isSingleUrlIndividual = urls.length === 1 && individualCheck;
-        const manualEnteredToday = aestDate(prev?.checked_at) === today;
-        if (prev?.method === 'manual' && manualEnteredToday && !isSingleUrlIndividual) {
+        const manualEntryAgeMs = prev?.checked_at ? Date.parse(now) - Date.parse(prev.checked_at) : Infinity;
+        const manualStillFresh = manualEntryAgeMs < 24 * 3600 * 1000;
+        if (prev?.method === 'manual' && manualStillFresh && !isSingleUrlIndividual) {
           rPrice  = prev.price;
           rMethod = 'manual';
-          // Keep the original entry stamp so later checks today still carry it forward
+          // Keep the original entry stamp so the 24h window is measured from
+          // when the price was actually entered, not from this check
           rCheckedAt = prev.checked_at;
         }
       }
@@ -382,17 +382,6 @@ export async function checkProduct(product, env, { individualCheck = false } = {
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
-
-// Calendar date in AEST (fixed UTC+10, no daylight saving), not UTC. Used so
-// "carry forward today's manual entry" means "today in AEST" consistently —
-// comparing raw UTC dates caused inconsistent carry-forward duration (16-40h
-// instead of a predictable single day) since the 6am AEST cron fires at
-// 20:00 UTC the *previous* UTC calendar day.
-function aestDate(iso) {
-  if (!iso) return null;
-  const d = new Date(Date.parse(iso) + 10 * 3600 * 1000);
-  return d.toISOString().slice(0, 10);
-}
 
 function respond(data, status = 200) {
   return new Response(JSON.stringify(data), {
