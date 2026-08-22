@@ -274,10 +274,10 @@ async function getUrlHistory(env, id) {
 
 export async function checkProduct(product, env, { individualCheck = false } = {}) {
   const now   = new Date().toISOString();
-  const today = now.slice(0, 10);
+  const today = aestDate(now);
 
   const existingResults  = (() => { try { return JSON.parse(product.url_results || '[]'); } catch { return []; } })();
-  const wasCheckedToday  = product.last_checked_at?.slice(0, 10) === today;
+  const wasCheckedToday  = aestDate(product.last_checked_at) === today;
 
   let price      = null;
   let method     = null;
@@ -297,7 +297,7 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       if (rPrice == null) {
         const prev = existingResults.find(r => r.url === u);
         const isSingleUrlIndividual = urls.length === 1 && individualCheck;
-        const manualEnteredToday = prev?.checked_at?.slice(0, 10) === today;
+        const manualEnteredToday = aestDate(prev?.checked_at) === today;
         if (prev?.method === 'manual' && manualEnteredToday && !isSingleUrlIndividual) {
           rPrice  = prev.price;
           rMethod = 'manual';
@@ -382,6 +382,17 @@ export async function checkProduct(product, env, { individualCheck = false } = {
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
+
+// Calendar date in AEST (fixed UTC+10, no daylight saving), not UTC. Used so
+// "carry forward today's manual entry" means "today in AEST" consistently —
+// comparing raw UTC dates caused inconsistent carry-forward duration (16-40h
+// instead of a predictable single day) since the 6am AEST cron fires at
+// 20:00 UTC the *previous* UTC calendar day.
+function aestDate(iso) {
+  if (!iso) return null;
+  const d = new Date(Date.parse(iso) + 10 * 3600 * 1000);
+  return d.toISOString().slice(0, 10);
+}
 
 function respond(data, status = 200) {
   return new Response(JSON.stringify(data), {
