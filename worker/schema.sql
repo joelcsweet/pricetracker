@@ -41,6 +41,13 @@ CREATE TABLE IF NOT EXISTS url_check_log (
   checked_at  TEXT NOT NULL
 );
 
+-- Simple key/value settings store — currently just the ScraperAPI key, so it
+-- can be entered/updated from the app instead of only via `wrangler secret`.
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_history(product_id, checked_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_sent_product   ON alerts_sent(product_id, sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_url_check_log_product ON url_check_log(product_id, checked_at DESC);

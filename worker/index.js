@@ -3,7 +3,11 @@
  * Handles: REST API, cron daily check, scraping, email alerts.
  *
  * Secrets expected (set via `wrangler secret put`):
- *   SCRAPERAPI_KEY, RESEND_API_KEY, RESEND_TO_EMAIL, API_SECRET
+ *   RESEND_API_KEY, RESEND_TO_EMAIL, API_SECRET
+ *
+ * The ScraperAPI key is NOT a secret — it's stored in the `settings` D1 table
+ * and editable from the app's Settings screen (falls back to a SCRAPERAPI_KEY
+ * secret if no setting has been saved yet, for backward compatibility).
  */
 
 import { extract }     from './extract.js';
@@ -57,6 +61,15 @@ export default {
     // POST /products/:id/manual-price  — save manual price + record in history
     const manualMatch = path.match(/^\/products\/([^/]+)\/manual-price$/);
     if (method === 'POST' && manualMatch)                    return saveManualPrice(request, env, manualMatch[1]);
+
+    // GET  /settings/scraperapi-key  — whether a key is saved (masked, never the raw value)
+    if (method === 'GET'  && path === '/settings/scraperapi-key') return getScraperApiKeyStatus(env);
+
+    // PUT  /settings/scraperapi-key  — save/replace the key
+    if (method === 'PUT'  && path === '/settings/scraperapi-key') return setScraperApiKey(request, env);
+
+    // DELETE /settings/scraperapi-key  — clear the saved key
+    if (method === 'DELETE' && path === '/settings/scraperapi-key') return clearScraperApiKey(env);
 
     return respond({ error: 'Not found' }, 404);
   },
@@ -195,6 +208,48 @@ async function saveManualPrice(request, env, id) {
   return respond({ ok: true, price, status: newStatus });
 }
 
+// ── Settings (ScraperAPI key) ────────────────────────────────────────────────
+
+async function getSetting(env, key) {
+  const { results } = await env.DB.prepare(
+    `SELECT value FROM settings WHERE key = ?`
+  ).bind(key).all();
+  return results[0]?.value ?? null;
+}
+
+async function setSetting(env, key, value) {
+  await env.DB.prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).bind(key, value).run();
+}
+
+// Falls back to the SCRAPERAPI_KEY secret if nothing has been saved via the
+// Settings screen yet, so existing deployments keep working unchanged.
+async function getScraperApiKey(env) {
+  const saved = await getSetting(env, 'scraperapi_key');
+  return saved || env.SCRAPERAPI_KEY || null;
+}
+
+async function getScraperApiKeyStatus(env) {
+  const key = await getScraperApiKey(env);
+  return respond({ saved: !!key, last4: key ? key.slice(-4) : null });
+}
+
+async function setScraperApiKey(request, env) {
+  const body = await request.json().catch(() => null);
+  const key  = body?.key?.trim();
+  if (!key) return respond({ error: 'key required' }, 400);
+
+  await setSetting(env, 'scraperapi_key', key);
+  return respond({ saved: true, last4: key.slice(-4) });
+}
+
+async function clearScraperApiKey(env) {
+  await env.DB.prepare(`DELETE FROM settings WHERE key = 'scraperapi_key'`).run();
+  return respond({ saved: false, last4: null });
+}
+
 async function getHistory(env, id) {
   const { results } = await env.DB.prepare(
     `SELECT price, checked_at FROM price_history
@@ -230,10 +285,11 @@ export async function checkProduct(product, env, { individualCheck = false } = {
   let urlResults = [];
 
   try {
-    const urls = product.url.split('\n').map(u => u.trim()).filter(Boolean);
+    const urls        = product.url.split('\n').map(u => u.trim()).filter(Boolean);
+    const scraperApiKey = await getScraperApiKey(env);
 
     for (const u of urls) {
-      const extracted = await extract(u, env.SCRAPERAPI_KEY);
+      const extracted = await extract(u, scraperApiKey);
       let { price: rPrice, method: rMethod } = extracted;
 
       // Carry forward today's manual entry if extraction still fails

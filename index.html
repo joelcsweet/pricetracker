@@ -438,6 +438,7 @@
 <div class="topbar">
   <div class="topbar-logo">Price<span>Tracker</span></div>
   <div class="topbar-actions">
+    <button class="btn-outline btn-sm btn-icon" onclick="openSettingsModal()" title="Settings">⚙</button>
     <button class="btn-primary" onclick="openAddModal()">+ Add</button>
   </div>
 </div>
@@ -469,6 +470,22 @@
     <div class="modal-actions">
       <button class="btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn-brand" id="modalSaveBtn" onclick="saveProduct()">Save product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsOverlay" onclick="closeSettingsModal(event)">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div class="field">
+      <label>ScraperAPI key</label>
+      <input id="fScraperApiKey" type="password" placeholder="Enter your ScraperAPI key">
+      <p class="field-hint" id="scraperApiKeyStatus"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn-brand" id="settingsSaveBtn" onclick="saveScraperApiKey()">Save</button>
     </div>
   </div>
 </div>
@@ -819,6 +836,50 @@ function openEditModal(id) {
 function closeModal(e) {
   if (e && e.target !== document.getElementById('modalOverlay')) return;
   document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function openSettingsModal() {
+  const input  = document.getElementById('fScraperApiKey');
+  const status = document.getElementById('scraperApiKeyStatus');
+  input.value = '';
+  status.textContent = 'Loading…';
+  document.getElementById('settingsOverlay').classList.add('open');
+
+  try {
+    const s = await api('/settings/scraperapi-key');
+    status.textContent = s.saved
+      ? `A key ending in …${s.last4} is saved. Enter a new one to replace it.`
+      : 'No key saved yet — ScraperAPI fallback is disabled until one is added.';
+  } catch (e) {
+    status.textContent = 'Could not load current status.';
+  }
+}
+
+function closeSettingsModal(e) {
+  if (e && e.target !== document.getElementById('settingsOverlay')) return;
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+async function saveScraperApiKey() {
+  const input = document.getElementById('fScraperApiKey');
+  const key   = input.value.trim();
+  if (!key) { showToast('Enter a key first.'); return; }
+
+  const btn = document.getElementById('settingsSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Saving…';
+
+  try {
+    await api('/settings/scraperapi-key', { method: 'PUT', body: JSON.stringify({ key }) });
+    document.getElementById('settingsOverlay').classList.remove('open');
+    showToast('ScraperAPI key saved.');
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Save';
+  }
 }
 
 async function saveProduct() {
