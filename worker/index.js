@@ -251,13 +251,17 @@ async function clearScraperApiKey(env) {
 }
 
 async function getHistory(env, id) {
+  // Fetch the most recent 90 rows (DESC), then reverse to ascending order for
+  // the chart. Querying ASC+LIMIT directly would return the OLDEST 90 rows
+  // instead once a product passes 90 total checks, permanently freezing the
+  // chart at whatever date that cap was first hit.
   const { results } = await env.DB.prepare(
     `SELECT price, checked_at FROM price_history
      WHERE product_id = ?
-     ORDER BY checked_at ASC
+     ORDER BY checked_at DESC
      LIMIT 90`
   ).bind(id).all();
-  return respond(results);
+  return respond(results.reverse());
 }
 
 async function getUrlHistory(env, id) {

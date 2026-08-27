@@ -99,6 +99,9 @@ function runCascade(html, viaScraper = false, url = '') {
   price = tryMetaTags(html);
   if (price != null) return { price, method: `${prefix}meta-tags` };
 
+  price = tryDataLayer(html);
+  if (price != null) return { price, method: `${prefix}datalayer` };
+
   // Amazon + generic heuristic is a bad combination: if the buy box wasn't
   // found, the HTML is likely a bot-check/altered page (Amazon blocking the
   // fetch), and the heuristic will grab an unrelated price from whatever
@@ -205,6 +208,17 @@ function tryMetaTags(html) {
     }
   }
   return null;
+}
+
+function tryDataLayer(html) {
+  // Google Tag Manager "Enhanced Ecommerce" dataLayer, common across many
+  // retail sites (Salesforce Commerce Cloud, Shopify+GTM, etc.), embeds the
+  // canonical product price as JSON, e.g.:
+  //   "ecommerce":{"detail":{"products":[{"name":"...","price":"29.99",...}]}}
+  // Far more reliable than the heuristic since it's the exact price the site
+  // itself reports for analytics, not text scraped from surrounding chrome.
+  const m = html.match(/"products"\s*:\s*\[\s*\{[^}]*?"price"\s*:\s*"?([\d.]+)"?/i);
+  return m ? parsePrice(m[1]) : null;
 }
 
 function tryHeuristic(html) {
