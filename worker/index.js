@@ -324,14 +324,25 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       if (price <= product.target_price) {
         status = 'target_hit';
 
-        // Send alert only if we haven't already sent one for this price level
+        // Alert once per "dip": skip only if an alert was already sent and the
+        // price hasn't been back above target since. (Previously any old alert
+        // at/below target suppressed all future alerts forever.)
         const { results: recent } = await env.DB.prepare(
-          `SELECT id FROM alerts_sent
+          `SELECT sent_at FROM alerts_sent
            WHERE product_id = ? AND price <= ?
            ORDER BY sent_at DESC LIMIT 1`
         ).bind(product.id, product.target_price).all();
 
-        if (!recent.length) {
+        let shouldAlert = !recent.length;
+        if (!shouldAlert) {
+          const { results: wentUp } = await env.DB.prepare(
+            `SELECT 1 FROM price_history
+             WHERE product_id = ? AND checked_at > ? AND price > ? LIMIT 1`
+          ).bind(product.id, recent[0].sent_at, product.target_price).all();
+          shouldAlert = wentUp.length > 0;
+        }
+
+        if (shouldAlert) {
           await sendAlert({ product, price }, env);
           await env.DB.prepare(
             `INSERT INTO alerts_sent (product_id, price, sent_at) VALUES (?, ?, ?)`
