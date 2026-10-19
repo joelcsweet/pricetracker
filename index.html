@@ -299,10 +299,39 @@
   /* Chart */
   .chart-wrap {
     margin-top: 12px;
-    height: 52px;
+    padding: 6px 8px 5px;
     border-radius: 8px;
-    overflow: hidden;
     background: var(--bg);
+  }
+  .chart-body { display: flex; gap: 6px; height: 56px; }
+  .chart-y {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 36px;
+    text-align: right;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text-faint);
+  }
+  .chart-plot { position: relative; flex: 1; min-width: 0; }
+  .chart-plot svg { width: 100%; height: 100%; display: block; }
+  .chart-dot {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    background: #7c3aed;
+  }
+  .chart-x {
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0 0 42px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-faint);
   }
 
   .card-checked {
@@ -771,43 +800,49 @@ function drawSparkline(p) {
   const max    = Math.max(...prices);
   const range  = max - min || 1;
   const W = 600, H = 56;
+  const fmtPrice = v => '$' + (Number.isInteger(v) ? v : v.toFixed(2));
+  const fmtDate  = iso => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 
-  // Single data point: draw a flat centred line so a chart shows from the first check
-  if (prices.length === 1) {
-    const y = H / 2;
-    wrap.innerHTML = `
-      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-           style="width:100%;height:100%;display:block">
-        <line x1="0" y1="${y}" x2="${W}" y2="${y}"
-              stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="${W - 3}" cy="${y}" r="3" fill="#7c3aed"/>
-      </svg>`;
-    return;
-  }
+  // x-axis date labels: first / middle / last (just one if a single point)
+  const hist  = p._history;
+  const dates = hist.length === 1 ? [hist[0]]
+              : hist.length === 2 ? [hist[0], hist[1]]
+              : [hist[0], hist[Math.floor((hist.length - 1) / 2)], hist[hist.length - 1]];
+  const xLabels = dates.map(h => `<span>${fmtDate(h.checked_at)}</span>`).join('');
 
-  const pts = prices.map((price, i) => {
-    const x = (i / (prices.length - 1)) * W;
-    const y = H - ((price - min) / range) * (H - 10) - 5;
-    return `${x},${y}`;
-  });
+  // Single data point: flat centred line so a chart shows from the first check
+  const single = prices.length === 1;
+  const pts = single
+    ? [[0, H / 2], [W, H / 2]]
+    : prices.map((price, i) => [(i / (prices.length - 1)) * W, H - ((price - min) / range) * (H - 10) - 5]);
+  const last = pts[pts.length - 1];
+
+  const yLabels = single || max === min
+    ? `<span></span><span>${fmtPrice(max)}</span><span></span>`
+    : `<span>${fmtPrice(max)}</span><span>${fmtPrice(min)}</span>`;
 
   const targetY = H - ((p.target_price - min) / range) * (H - 10) - 5;
-  const targetLine = (p.target_price >= min && p.target_price <= max)
+  const targetLine = (!single && p.target_price >= min && p.target_price <= max)
     ? `<line x1="0" y1="${targetY}" x2="${W}" y2="${targetY}"
-             stroke="#7c3aed" stroke-width="1" stroke-dasharray="4,3" opacity=".6"/>`
+             stroke="#7c3aed" stroke-width="1" stroke-dasharray="4,3" opacity=".6"
+             vector-effect="non-scaling-stroke"/>`
     : '';
 
   wrap.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;height:100%;display:block">
-      ${targetLine}
-      <polyline points="${pts.join(' ')}"
-                fill="none" stroke="#7c3aed" stroke-width="2"
-                stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${pts[pts.length-1].split(',')[0]}"
-              cy="${pts[pts.length-1].split(',')[1]}"
-              r="3" fill="#7c3aed"/>
-    </svg>`;
+    <div class="chart-body">
+      <div class="chart-y">${yLabels}</div>
+      <div class="chart-plot">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          ${targetLine}
+          <polyline points="${pts.map(pt => pt.join(',')).join(' ')}"
+                    fill="none" stroke="#7c3aed" stroke-width="2"
+                    stroke-linejoin="round" stroke-linecap="round"
+                    vector-effect="non-scaling-stroke"/>
+        </svg>
+        <span class="chart-dot" style="left:${(last[0] / W) * 100}%;top:${(last[1] / H) * 100}%"></span>
+      </div>
+    </div>
+    <div class="chart-x">${xLabels}</div>`;
 }
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
