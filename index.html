@@ -24,7 +24,8 @@
   /* Copy and elements that only belong to one look */
   [data-theme=geo] .t-win, [data-theme=win] .t-geo { display: none !important; }
 
-  .app { max-width: 720px; margin: 0 auto; padding: 12px 12px 90px; }
+  .top { width: calc(100% - 24px); max-width: 696px; margin: 12px auto 0; }
+  .app { max-width: 720px; margin: 0 auto; padding: 0 12px 90px; }
   .product-list { display: flex; flex-direction: column; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -195,7 +196,7 @@
     font: 13px/1.35 Tahoma, Arimo, Verdana, sans-serif;
     min-height: 100vh;
   }
-  [data-theme=win] .app { padding: 10px 10px 60px; }
+  [data-theme=win] .app { padding: 0 12px 60px; }
 
   [data-theme=win] .top { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; padding: 2px; }
   [data-theme=win] .w-title { display: flex; align-items: center; gap: 6px; background: #000080; color: #fff; padding: 2px 4px; height: 24px; }
@@ -263,7 +264,8 @@
   [data-theme=win] .chart-dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: #00FF41; }
 
   [data-theme=win] .card-foot { flex-direction: column; align-items: stretch; margin-top: 8px; gap: 8px; }
-  [data-theme=win] .foot-actions { order: 1; justify-content: space-between; }
+  [data-theme=win] .foot-actions { order: 1; justify-content: flex-end; }
+  [data-theme=win] .foot-actions .chk { margin-right: auto; }
   [data-theme=win] .card-checked { order: 2; border: 1px solid; border-color: #808080 #fff #fff #808080; padding: 1px 6px; font-size: 11px; }
   [data-theme=win] .xbtn {
     display: inline-flex; align-items: center; justify-content: center; gap: 4px;
