@@ -1,4 +1,4 @@
-# PriceTracker — CLAUDE.md
+﻿# PriceTracker — CLAUDE.md
 
 ## Overview
 
@@ -12,7 +12,7 @@ PriceTracker is a personal price-tracking Progressive Web App. It lets one user 
 
 ## Tech stack
 
-- **Frontend**: single static HTML file (`index.html`) — no framework, no build step, vanilla JS + inline `<style>`. Fonts from Google Fonts (`Anton`, `Comic Neue`, `Arimo`, `VT323`, falling back to system Impact / Comic Sans / Tahoma). Icons from the Tabler webfont via jsDelivr (`@tabler/icons-webfont@3`). Hosted on **GitHub Pages** at `https://joelcsweet.github.io/pricetracker`.
+- **Frontend**: single static HTML file (`index.html`) — no framework, no build step, vanilla JS + inline `<style>`. Fonts from Google Fonts (`Anton`, `Comic Neue`, falling back to system Impact / Comic Sans). Icons from the Tabler webfont via jsDelivr (`@tabler/icons-webfont@3`). Hosted on **GitHub Pages** at `https://joelcsweet.github.io/pricetracker`.
 - **PWA**: `manifest.json` + `sw.js` (service worker) for installability on Android/desktop. Cache name currently `pricetracker-v2`.
 - **Backend**: **Cloudflare Workers** (serverless), plain JS (ES modules), no framework/router library — routing is done with manual regex matching on `url.pathname`.
 - **Database**: **Cloudflare D1** (SQLite-based), binding name `DB`, database name `pricetracker-db`, database ID `53ce159e-fe08-465a-862b-9d90c3f9db4a`.
@@ -100,10 +100,8 @@ Note: `POST /check-all` and the "Check all" UI button were **intentionally remov
 ## Conventions
 
 - **No build step, no bundler, no framework** — `index.html` is a single self-contained file (inline `<style>` and `<script>`), and the Worker is plain ES modules deployed as-is via `wrangler deploy`.
-- **Two selectable looks, one set of markup**: `<html data-theme="geo|win">`. `geo` (default) is the GeoCities-style page: starfield, red banner, Impact/Comic Sans, "Hit!" starburst. `win` is the Windows 95 look: teal desktop, beveled grey windows, navy/green/maroon title bars, VT323 LCD price, taskbar with Start (opens Settings). The user switches in Settings (⚙ / Start); the choice lives in `localStorage` key `pt-theme` (per device, not synced) and an inline `<head>` script applies it before first paint to avoid a flash. `applyTheme()` / `setTheme()` also update the `theme-color` meta tag.
-- **How the looks differ**: all theme CSS is scoped with `[data-theme=geo]` / `[data-theme=win]` selectors. Copy or elements that belong to one look carry `.t-geo` / `.t-win` (hidden in the other look via one shared rule). `cardHtml()` emits every piece for both looks (title bar, card head, meter variants, notes); CSS decides what shows. When adding UI, add it to both looks and test both.
-- **Look-specific details to preserve**: bevels are drawn with border colour pairs (no `box-shadow`); chart lines/grid/dot are styled by class (`.c-line`, `.c-grid`, `.c-target`, `.chart-dot`) so the SVG itself has no hardcoded colours; paused cards are dimmed and dashed in `geo` but collapse to title bar + footer in `win`.
-- **Status-driven styling**: product cards get a CSS class `status-${p.status}` (card colour in `geo`, title-bar colour in `win`); badges follow the same status vocabulary (`ok`, `target_hit`, `needs_attention`, `error`, `pending`).
+- **Single GeoCities-style look** (a Windows 95 alternative existed briefly and was removed at the user's request — do not reintroduce a theme switcher unless asked): starfield background, red banner with rainbow rule, Impact/Comic Sans type, bevelled grey buttons and borders, a "Hit!" starburst on target-hit cards. Bevels are drawn with border colour pairs (no `box-shadow`). Chart lines/grid/dot are styled by class (`.c-line`, `.c-grid`, `.c-target`, `.chart-dot`) so the SVG has no hardcoded colours. Paused cards are dimmed and dashed. `boot()` removes the old `pt-theme` localStorage key.
+- **Status-driven styling**: product cards get a CSS class `status-${p.status}` that sets the card colour (white = hit, yellow = above target, pink = needs price); badges follow the same status vocabulary (`ok`, `target_hit`, `needs_attention`, `error`, `pending`).
 - **Store rows show hostnames, not URLs** (`hostOf()`), with the full URL in the link's `title`; the cheapest store is flagged when more than one price exists. The extraction method is still shown per row (user asked for this early on).
 - **Extraction method naming convention**: `json-ld`, `microdata`, `meta-tags`, `heuristic`, `manual`, `amazon-buybox`, `amazon-other-sellers` — and any of these get a `scraperapi-` prefix when the HTML came from the ScraperAPI pass rather than direct fetch (e.g. `scraperapi-json-ld`).
 - **Comments are used sparingly and only to explain *why*, not *what***, particularly around fragile scraping logic and non-obvious carry-forward/status-priority rules (this matches the user's general working style throughout the project).

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="geo">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,20 +9,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Price Tracker">
-<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('pt-theme')==='win'?'win':'geo')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@400;700&family=Comic+Neue:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
-  /* ── Shared structure (both looks) ───────────────────────────────────────── */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
   button:disabled { opacity: .55; cursor: not-allowed; }
   i.ti { line-height: 1; }
 
-  /* Copy and elements that only belong to one look */
-  [data-theme=geo] .t-win, [data-theme=win] .t-geo { display: none !important; }
+  body {
+    background: #0A0A3C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%230A0A3C'/%3E%3Ccircle cx='8' cy='12' r='1.6' fill='%23fff'/%3E%3Ccircle cx='40' cy='30' r='1.2' fill='%23FFFF66'/%3E%3Ccircle cx='22' cy='50' r='1.4' fill='%2399CCFF'/%3E%3Ccircle cx='52' cy='8' r='1.1' fill='%23fff'/%3E%3Ccircle cx='12' cy='36' r='1' fill='%23FF99CC'/%3E%3C/svg%3E");
+    color: #000;
+    font: 15px/1.35 'Comic Sans MS', 'Comic Neue', cursive;
+    min-height: 100vh;
+  }
 
   .top { width: calc(100% - 24px); max-width: 696px; margin: 12px auto 0; }
   .app { max-width: 720px; margin: 0 auto; padding: 0 12px 90px; }
@@ -38,58 +40,124 @@
 
   .lnk { font: inherit; text-decoration: underline; color: #0000EE; }
 
-  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .price-note { display: flex; gap: 8px; align-items: flex-start; }
-  .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .foot-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  /* ── Header ──────────────────────────────────────────────────────────────── */
+  .g-banner { background: #F00; border: 4px solid; border-color: #F99 #800 #800 #F99; padding: 10px 8px; text-align: center; }
+  .g-banner-t { font: 400 clamp(24px, 7vw, 34px)/1.1 Impact, Anton, sans-serif; color: #FF0; letter-spacing: .5px; }
+  .g-banner-t i { font-size: .75em; }
+  .g-banner-s { color: #fff; font-size: 13px; margin-top: 2px; }
+  .g-rainbow { display: flex; height: 6px; margin-top: 6px; }
+  .g-rainbow i { flex: 1; }
+  .g-rainbow i:nth-child(1) { background: #F00; }
+  .g-rainbow i:nth-child(2) { background: #F80; }
+  .g-rainbow i:nth-child(3) { background: #FF0; }
+  .g-rainbow i:nth-child(4) { background: #0F0; }
+  .g-rainbow i:nth-child(5) { background: #0FF; }
+  .g-rainbow i:nth-child(6) { background: #00F; }
+  .g-rainbow i:nth-child(7) { background: #F0F; }
+  .g-links { background: #C0C0C0; border: 3px solid; border-color: #fff #808080 #808080 #fff; margin-top: 8px; padding: 6px; text-align: center; font-size: 15px; }
 
-  .chk { display: inline-flex; align-items: center; gap: 6px; }
-  .chk-box { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #fff; font-size: 12px; color: #000; flex-shrink: 0; }
-  .chk-box i { visibility: hidden; }
-  .chk.on .chk-box i { visibility: visible; }
+  .stats { display: flex; gap: 6px; margin-top: 8px; text-align: center; }
+  .stat { flex: 1; border: 3px solid; border-color: #fff #808080 #808080 #fff; padding: 4px 2px; line-height: 1.1; font-size: 13px; }
+  .stat b { display: block; font: 400 26px/1.1 Impact, Anton, sans-serif; }
+  .st-total { background: #0FF; }
+  .st-hit   { background: #0F0; }
+  .st-attn  { background: #FF0; }
 
-  .url-price-list { list-style: none; }
-  .url-row { display: flex; align-items: center; gap: 6px; }
-  .url-row .u-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-  .url-row .u-price { margin-left: auto; white-space: nowrap; }
+  /* ── Cards ───────────────────────────────────────────────────────────────── */
+  .card { position: relative; background: #fff; border: 4px solid; border-color: #fff #808080 #808080 #fff; margin-top: 14px; }
+  .card.status-ok { background: #FFFF99; }
+  .card.status-needs_attention { background: #FF99CC; }
+  .card.status-error { background: #FFCCCC; }
+  .card.status-pending { background: #E6E6E6; }
+  .card.card-inactive { border-style: dashed; border-color: #C0C0C0; opacity: .6; filter: grayscale(.6); }
+  .card-body { padding: 8px 10px 10px; }
+  .burst { position: absolute; right: -8px; top: -18px; width: 60px; height: 60px; transform: rotate(12deg); z-index: 2; }
+  .card-name { color: #0000EE; text-decoration: underline; font-size: 18px; line-height: 1.2; padding-right: 48px; }
+  .badge { display: inline-block; border: 2px solid #000; padding: 0 8px; font-size: 13px; margin-top: 4px; background: #fff; }
+  .badge-hit { background: #0F0; }
+  .badge-attention { background: #FF99CC; }
+  .badge-error { background: #F66; color: #fff; }
+  .badge-pending, .badge-paused { background: #DDD; }
+  .price-big { font: 400 clamp(46px, 14vw, 62px)/1 Impact, Anton, sans-serif; color: #F00; margin-top: 6px; }
+  .price-note { font-size: 14px; color: #000; }
+  .status-target_hit .price-note { color: #008000; }
+  .status-needs_attention .price-note, .status-error .price-note { color: #C00; }
+  .meter-bar { height: 18px; border: 3px solid; border-color: #808080 #fff #fff #808080; background: #fff; margin-top: 6px; display: flex; }
+  .meter-bar div { background: #F00; }
+  .meter-lbl { font-size: 12px; margin-top: 2px; }
+
+  /* Store rows */
+  .url-price-list { list-style: none; margin-top: 8px; border: 2px solid #000; font-size: 14px; }
+  .url-price-list > li:last-child { border-bottom: 0; }
+  .url-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: #CCFFFF; border-bottom: 2px solid #000; }
+  .url-row.best { background: #FFFF99; }
+  .url-row .u-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; color: #0000EE; text-decoration: underline; }
+  .url-row .u-price { margin-left: auto; white-space: nowrap; font-size: 15px; }
   .u-method, .u-best { white-space: nowrap; }
+  .u-method { font-size: 11px; color: #555; }
+  .u-best { color: #F00; }
+  .u-price.hit { color: #008000; }
+  .u-price.none { color: #666; }
   @media (max-width: 480px) {
     .url-row { flex-wrap: wrap; }
     .url-row .u-method { order: 5; flex-basis: 100%; }
   }
-  .url-manual { list-style: none; }
-  .url-manual .mi-row { display: flex; gap: 6px; margin-top: 4px; }
-  .url-manual input { flex: 1; min-width: 0; outline: none; font: inherit; color: #000; background: #fff; }
 
+  /* Manual price entry */
+  .url-manual { list-style: none; padding: 6px; background: #FF99CC; border-bottom: 2px solid #000; }
+  .mi-msg { color: #C00; font-size: 14px; }
+  .mi-row { display: flex; gap: 6px; margin-top: 4px; }
+  .mi-row input { flex: 1; min-width: 0; }
+
+  /* Chart */
+  .chart-wrap { margin-top: 8px; }
   .chart-wrap:empty { display: none; }
   .chart-body { display: flex; gap: 6px; height: 64px; }
-  .chart-y { display: flex; flex-direction: column; justify-content: space-between; min-width: 38px; text-align: right; line-height: 1; }
-  .chart-plot { position: relative; flex: 1; min-width: 0; }
+  .chart-y { display: flex; flex-direction: column; justify-content: space-between; min-width: 38px; text-align: right; line-height: 1; font-size: 12px; }
+  .chart-plot { position: relative; flex: 1; min-width: 0; border: 3px solid; border-color: #808080 #fff #fff #808080; background: #fff; }
   .chart-plot svg { display: block; width: 100%; height: 100%; }
-  .chart-dot { position: absolute; }
-  .chart-x { display: flex; justify-content: space-between; margin: 3px 0 0 44px; }
+  .chart-x { display: flex; justify-content: space-between; margin: 3px 0 0 44px; font-size: 12px; }
   .c-grid, .c-line, .c-target { vector-effect: non-scaling-stroke; fill: none; }
-  .c-line { stroke-linejoin: round; stroke-linecap: round; }
+  .c-grid { stroke: #CCC; stroke-width: 1; }
+  .c-line { stroke: #00F; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+  .c-target { stroke: #F00; stroke-width: 2; stroke-dasharray: 5 4; }
+  .chart-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #F00; border: 2px solid #000; }
 
+  /* Footer + buttons */
+  .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 8px; font-size: 13px; }
+  .foot-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .xbtn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    background: #C0C0C0; border: 3px solid; border-color: #fff #808080 #808080 #fff;
+    padding: 2px 10px; font-size: 14px; color: #000;
+  }
+  .xbtn:active { border-color: #808080 #fff #fff #808080; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; }
+  .chk-box { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #fff; font-size: 12px; color: #000; flex-shrink: 0; border: 3px solid; border-color: #808080 #fff #fff #808080; }
+  .chk-box i { visibility: hidden; }
+  .chk.on .chk-box i { visibility: visible; }
+
+  /* ── Modals ──────────────────────────────────────────────────────────────── */
   .modal-overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
     z-index: 100; align-items: center; justify-content: center; padding: 16px;
   }
   .modal-overlay.open { display: flex; }
-  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow: auto; }
-  .mtitle { display: flex; justify-content: space-between; align-items: center; }
-  .mclose { display: inline-flex; align-items: center; justify-content: center; }
+  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow: auto; background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
+  .mtitle { display: flex; justify-content: space-between; align-items: center; background: #F00; color: #FF0; font: 400 22px/1 Impact, Anton, sans-serif; padding: 8px 10px; }
+  .mclose { display: inline-flex; align-items: center; justify-content: center; color: #FF0; font-size: 20px; }
+  .mbody { padding: 14px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; margin-bottom: 4px; }
-  .field input, .field textarea { width: 100%; outline: none; font: inherit; color: #000; background: #fff; }
+  .field input, .field textarea, .mi-row input {
+    width: 100%; outline: none; font: inherit; color: #000; background: #fff;
+    border: 3px solid; border-color: #808080 #fff #fff #808080; padding: 5px 6px;
+  }
   .field textarea { resize: vertical; min-height: 90px; }
-  .field-hint { font-size: 12px; margin-top: 4px; }
+  .field-hint { font-size: 12px; margin-top: 4px; color: #444; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
-  .theme-opts { display: flex; gap: 8px; flex-wrap: wrap; }
-  .theme-opt .sel-ic { visibility: hidden; }
-  .theme-opt.sel .sel-ic { visibility: visible; }
 
-  .empty { text-align: center; padding: 50px 16px; }
+  .empty { text-align: center; padding: 50px 16px; color: #fff; }
   .empty p { font-size: 16px; line-height: 1.6; }
 
   .toast {
@@ -97,245 +165,33 @@
     transform: translateX(-50%) translateY(80px);
     transition: transform .25s ease; z-index: 200;
     white-space: nowrap; pointer-events: none; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+    background: #FF0; color: #000; border: 3px solid #000; padding: 8px 14px;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* ══ GEOCITIES ═══════════════════════════════════════════════════════════ */
-  [data-theme=geo] body {
-    background: #0A0A3C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%230A0A3C'/%3E%3Ccircle cx='8' cy='12' r='1.6' fill='%23fff'/%3E%3Ccircle cx='40' cy='30' r='1.2' fill='%23FFFF66'/%3E%3Ccircle cx='22' cy='50' r='1.4' fill='%2399CCFF'/%3E%3Ccircle cx='52' cy='8' r='1.1' fill='%23fff'/%3E%3Ccircle cx='12' cy='36' r='1' fill='%23FF99CC'/%3E%3C/svg%3E");
-    color: #000;
-    font: 15px/1.35 'Comic Sans MS', 'Comic Neue', cursive;
-    min-height: 100vh;
-  }
-
-  [data-theme=geo] .g-banner { background: #F00; border: 4px solid; border-color: #F99 #800 #800 #F99; padding: 10px 8px; text-align: center; }
-  [data-theme=geo] .g-banner-t { font: 400 clamp(24px, 7vw, 34px)/1.1 Impact, Anton, sans-serif; color: #FF0; letter-spacing: .5px; }
-  [data-theme=geo] .g-banner-t i { font-size: .75em; }
-  [data-theme=geo] .g-banner-s { color: #fff; font-size: 13px; margin-top: 2px; }
-  [data-theme=geo] .g-rainbow { display: flex; height: 6px; margin-top: 6px; }
-  [data-theme=geo] .g-rainbow i { flex: 1; }
-  [data-theme=geo] .g-rainbow i:nth-child(1) { background: #F00; }
-  [data-theme=geo] .g-rainbow i:nth-child(2) { background: #F80; }
-  [data-theme=geo] .g-rainbow i:nth-child(3) { background: #FF0; }
-  [data-theme=geo] .g-rainbow i:nth-child(4) { background: #0F0; }
-  [data-theme=geo] .g-rainbow i:nth-child(5) { background: #0FF; }
-  [data-theme=geo] .g-rainbow i:nth-child(6) { background: #00F; }
-  [data-theme=geo] .g-rainbow i:nth-child(7) { background: #F0F; }
-  [data-theme=geo] .g-links { background: #C0C0C0; border: 3px solid; border-color: #fff #808080 #808080 #fff; margin-top: 8px; padding: 6px; text-align: center; font-size: 15px; }
-
-  [data-theme=geo] .stats { display: flex; gap: 6px; margin-top: 8px; text-align: center; }
-  [data-theme=geo] .stat { flex: 1; border: 3px solid; border-color: #fff #808080 #808080 #fff; padding: 4px 2px; line-height: 1.1; font-size: 13px; }
-  [data-theme=geo] .stat b { display: block; font: 400 26px/1.1 Impact, Anton, sans-serif; }
-  [data-theme=geo] .st-total { background: #0FF; }
-  [data-theme=geo] .st-hit   { background: #0F0; }
-  [data-theme=geo] .st-attn  { background: #FF0; }
-
-  [data-theme=geo] .card { position: relative; background: #fff; border: 4px solid; border-color: #fff #808080 #808080 #fff; margin-top: 14px; }
-  [data-theme=geo] .card.status-ok { background: #FFFF99; }
-  [data-theme=geo] .card.status-needs_attention { background: #FF99CC; }
-  [data-theme=geo] .card.status-error { background: #FFCCCC; }
-  [data-theme=geo] .card.status-pending { background: #E6E6E6; }
-  [data-theme=geo] .card.card-inactive { border-style: dashed; border-color: #C0C0C0; opacity: .6; filter: grayscale(.6); }
-  [data-theme=geo] .card-body { padding: 8px 10px 10px; }
-  [data-theme=geo] .burst { position: absolute; right: -8px; top: -18px; width: 60px; height: 60px; transform: rotate(12deg); z-index: 2; }
-  [data-theme=geo] .card-name { color: #0000EE; text-decoration: underline; font-size: 18px; line-height: 1.2; padding-right: 48px; }
-  [data-theme=geo] .badge { display: inline-block; border: 2px solid #000; padding: 0 8px; font-size: 13px; margin-top: 4px; background: #fff; }
-  [data-theme=geo] .badge-hit { background: #0F0; }
-  [data-theme=geo] .badge-attention { background: #FF99CC; }
-  [data-theme=geo] .badge-error { background: #F66; color: #fff; }
-  [data-theme=geo] .badge-pending, [data-theme=geo] .badge-paused { background: #DDD; }
-  [data-theme=geo] .price-big { font: 400 clamp(46px, 14vw, 62px)/1 Impact, Anton, sans-serif; color: #F00; margin-top: 6px; }
-  [data-theme=geo] .price-note { font-size: 14px; color: #000; }
-  [data-theme=geo] .status-target_hit .price-note { color: #008000; }
-  [data-theme=geo] .status-needs_attention .price-note, [data-theme=geo] .status-error .price-note { color: #C00; }
-  [data-theme=geo] .meter-geo { height: 18px; border: 3px solid; border-color: #808080 #fff #fff #808080; background: #fff; margin-top: 6px; display: flex; }
-  [data-theme=geo] .meter-geo div { background: #F00; }
-  [data-theme=geo] .meter-lbl { font-size: 12px; margin-top: 2px; }
-
-  [data-theme=geo] .url-price-list { margin-top: 8px; border: 2px solid #000; font-size: 14px; }
-  [data-theme=geo] .url-row { padding: 3px 6px; background: #CCFFFF; border-bottom: 2px solid #000; }
-  [data-theme=geo] .url-row.best { background: #FFFF99; }
-  [data-theme=geo] .url-price-list > li:last-child { border-bottom: 0; }
-  [data-theme=geo] .u-name { color: #0000EE; text-decoration: underline !important; }
-  [data-theme=geo] .u-method { font-size: 11px; color: #555; }
-  [data-theme=geo] .u-best { color: #F00; }
-  [data-theme=geo] .u-price { font-size: 15px; }
-  [data-theme=geo] .u-price.hit { color: #008000; }
-  [data-theme=geo] .u-price.none { color: #666; }
-  [data-theme=geo] .url-manual { padding: 6px; background: #FF99CC; border-bottom: 2px solid #000; }
-  [data-theme=geo] .mi-msg { color: #C00; font-size: 14px; }
-  [data-theme=geo] .url-manual input, [data-theme=geo] .field input, [data-theme=geo] .field textarea {
-    border: 3px solid; border-color: #808080 #fff #fff #808080; padding: 5px 6px;
-  }
-
-  [data-theme=geo] .chart-wrap { margin-top: 8px; }
-  [data-theme=geo] .chart-y, [data-theme=geo] .chart-x { font-size: 12px; color: #000; }
-  [data-theme=geo] .chart-plot { border: 3px solid; border-color: #808080 #fff #fff #808080; background: #fff; }
-  [data-theme=geo] .c-grid { stroke: #CCC; stroke-width: 1; }
-  [data-theme=geo] .c-line { stroke: #00F; stroke-width: 3; }
-  [data-theme=geo] .c-target { stroke: #F00; stroke-width: 2; stroke-dasharray: 5 4; }
-  [data-theme=geo] .chart-dot { width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #F00; border: 2px solid #000; }
-
-  [data-theme=geo] .card-foot { padding-top: 8px; font-size: 13px; }
-  [data-theme=geo] .xbtn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-    background: #C0C0C0; border: 3px solid; border-color: #fff #808080 #808080 #fff;
-    padding: 2px 10px; font-size: 14px; color: #000;
-  }
-  [data-theme=geo] .xbtn:active, [data-theme=geo] .xbtn.sel { border-color: #808080 #fff #fff #808080; }
-  [data-theme=geo] .xbtn.sel { background: #FF0; }
-  [data-theme=geo] .chk-box { border: 3px solid; border-color: #808080 #fff #fff #808080; }
-
-  [data-theme=geo] .modal { background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
-  [data-theme=geo] .mtitle { background: #F00; color: #FF0; font: 400 22px/1 Impact, Anton, sans-serif; padding: 8px 10px; }
-  [data-theme=geo] .mclose { color: #FF0; font-size: 20px; }
-  [data-theme=geo] .mbody { padding: 14px; }
-  [data-theme=geo] .field-hint { color: #444; }
-  [data-theme=geo] .empty { color: #fff; }
-  [data-theme=geo] .toast { background: #FF0; color: #000; border: 3px solid #000; font: 15px 'Comic Sans MS', 'Comic Neue', cursive; padding: 8px 14px; }
-
-  /* ══ WINDOWS 95 ══════════════════════════════════════════════════════════ */
-  [data-theme=win] body {
-    background: #008080; color: #000;
-    font: 13px/1.35 Tahoma, Arimo, Verdana, sans-serif;
-    min-height: 100vh;
-  }
-  [data-theme=win] .app { padding: 0 12px 60px; }
-
-  [data-theme=win] .top { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; padding: 2px; }
-  [data-theme=win] .w-title { display: flex; align-items: center; gap: 6px; background: #000080; color: #fff; padding: 2px 4px; height: 24px; }
-  [data-theme=win] .w-toolbar { display: flex; gap: 6px; padding: 6px 4px; flex-wrap: wrap; border-bottom: 1px solid #808080; }
-  [data-theme=win] .stats { display: flex; gap: 2px; margin-top: 2px; }
-  [data-theme=win] .stat { flex: 1; border: 1px solid; border-color: #808080 #fff #fff #808080; padding: 1px 8px; font-size: 12px; display: flex; gap: 4px; align-items: baseline; }
-  [data-theme=win] .stat b { font: inherit; display: inline; }
-
-  [data-theme=win] .card { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; padding: 2px; margin-top: 12px; }
-  [data-theme=win] .tbar { display: flex; align-items: center; justify-content: space-between; gap: 6px; background: #000080; color: #fff; padding: 2px 3px; height: 24px; }
-  [data-theme=win] .card.status-target_hit .tbar { background: #007A00; }
-  [data-theme=win] .card.status-needs_attention .tbar, [data-theme=win] .card.status-error .tbar { background: #800000; }
-  [data-theme=win] .card.card-inactive .tbar { background: #808080; }
-  [data-theme=win] .tbar-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  [data-theme=win] .tbar-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  [data-theme=win] .tb-x {
-    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff;
-    width: 20px; height: 18px; color: #000; font-size: 12px;
-  }
-  [data-theme=win] .card-body { padding: 8px 6px 6px; }
-  [data-theme=win] .price-big {
-    display: flex; justify-content: flex-end; align-items: center;
-    background: #000; border: 2px solid; border-color: #808080 #fff #fff #808080;
-    padding: 2px 10px; font: 400 clamp(46px, 14vw, 62px)/1 'VT323', monospace; color: #00FF41;
-  }
-  [data-theme=win] .note-ic { font-size: 22px; color: #000080; flex-shrink: 0; }
-  [data-theme=win] .status-needs_attention .note-ic, [data-theme=win] .status-error .note-ic { color: #C00000; }
-  [data-theme=win] .price-note { margin-top: 8px; }
-  [data-theme=win] .meter-win { display: flex; gap: 2px; height: 20px; padding: 2px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; margin-top: 6px; }
-  [data-theme=win] .meter-win i { flex: 1; background: #000080; }
-  [data-theme=win] .meter-win i.e { background: transparent; }
-  [data-theme=win] .meter-lbl { font-size: 11px; margin-top: 2px; }
-  [data-theme=win] .card.card-inactive .price-big,
-  [data-theme=win] .card.card-inactive .url-price-list,
-  [data-theme=win] .card.card-inactive .chart-wrap,
-  [data-theme=win] .card.card-inactive .meter { display: none; }
-
-  [data-theme=win] .url-price-list { margin-top: 8px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; }
-  [data-theme=win] .u-head { display: flex; }
-  [data-theme=win] .u-head span { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; padding: 1px 6px; }
-  [data-theme=win] .u-head .uh-store { flex: 1; }
-  [data-theme=win] .u-head .uh-price { width: 84px; text-align: right; }
-  [data-theme=win] .url-row { padding: 2px 6px; }
-  [data-theme=win] .url-row.best { background: #000080; color: #fff; }
-  [data-theme=win] .u-name { color: inherit; }
-  [data-theme=win] .u-method { font-size: 11px; color: #808080; }
-  [data-theme=win] .url-row.best .u-method { color: #C0C0C0; }
-  [data-theme=win] .u-price { width: 84px; text-align: right; margin-left: 0; }
-  [data-theme=win] .url-row .u-name { flex: 1; }
-  [data-theme=win] .u-price.none { color: #808080; }
-  [data-theme=win] .url-manual { padding: 6px; background: #C0C0C0; border-top: 1px solid #808080; }
-  [data-theme=win] .mi-msg { display: flex; gap: 6px; align-items: flex-start; }
-  [data-theme=win] .mi-msg i { font-size: 18px; color: #C00000; }
-  [data-theme=win] .url-manual input, [data-theme=win] .field input, [data-theme=win] .field textarea {
-    border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 3px 6px;
-  }
-
-  [data-theme=win] .chart-wrap { margin-top: 8px; }
-  [data-theme=win] .chart-y, [data-theme=win] .chart-x { font-size: 11px; color: #000; }
-  [data-theme=win] .chart-plot { border: 2px solid; border-color: #808080 #fff #fff #808080; background: #000; }
-  [data-theme=win] .c-grid { stroke: #005500; stroke-width: 1; }
-  [data-theme=win] .c-line { stroke: #00FF41; stroke-width: 2; }
-  [data-theme=win] .c-target { stroke: #FF3030; stroke-width: 1.5; stroke-dasharray: 4 3; }
-  [data-theme=win] .chart-dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: #00FF41; }
-
-  [data-theme=win] .card-foot { flex-direction: column; align-items: stretch; margin-top: 8px; gap: 8px; }
-  [data-theme=win] .foot-actions { order: 1; justify-content: flex-end; }
-  [data-theme=win] .foot-actions .chk { margin-right: auto; }
-  [data-theme=win] .card-checked { order: 2; border: 1px solid; border-color: #808080 #fff #fff #808080; padding: 1px 6px; font-size: 11px; }
-  [data-theme=win] .xbtn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-    background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff;
-    padding: 3px 10px; font-size: 12px; color: #000;
-  }
-  [data-theme=win] .xbtn:active, [data-theme=win] .xbtn.sel { border-color: #404040 #fff #fff #404040; }
-  [data-theme=win] .chk-box { border: 2px solid; border-color: #808080 #fff #fff #808080; }
-
-  [data-theme=win] .modal { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; padding: 2px; font-size: 13px; color: #000; }
-  [data-theme=win] .mtitle { background: #000080; color: #fff; padding: 2px 4px; height: 24px; }
-  [data-theme=win] .mclose { background: #C0C0C0; border: 2px solid; border-color: #fff #404040 #404040 #fff; width: 20px; height: 18px; color: #000; font-size: 12px; }
-  [data-theme=win] .mbody { padding: 12px; }
-  [data-theme=win] .field-hint { color: #404040; }
-  [data-theme=win] .empty { color: #fff; }
-
-  [data-theme=win] .taskbar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; height: 36px;
-    background: #C0C0C0; border-top: 2px solid #fff; padding: 3px 4px;
-    display: flex; align-items: center; gap: 6px; font: 12px Tahoma, Arimo, Verdana, sans-serif; color: #000;
-  }
-  [data-theme=win] .tb-sep { width: 3px; height: 24px; border-left: 1px solid #808080; border-right: 1px solid #fff; }
-  [data-theme=win] .tb-task { flex: 1; display: flex; align-items: center; gap: 6px; padding: 3px 8px; border: 2px solid; border-color: #404040 #fff #fff #404040; min-width: 0; white-space: nowrap; overflow: hidden; }
-  [data-theme=win] .tb-clock { padding: 3px 8px; border: 2px solid; border-color: #808080 #fff #fff #808080; white-space: nowrap; }
-  [data-theme=win] .toast { background: #FFFFE1; color: #000; border: 1px solid #000; font: 12px Tahoma, Arimo, Verdana, sans-serif; padding: 6px 10px; bottom: 52px; }
 </style>
 </head>
 <body>
 
 <header class="top">
-  <div class="t-geo">
-    <div class="g-banner">
-      <div class="g-banner-t"><i class="ti ti-star"></i> Welcome to my Price Tracker! <i class="ti ti-star"></i></div>
-      <div class="g-banner-s">Your daily deal page since 2026</div>
-    </div>
-    <div class="g-rainbow"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <nav class="g-links">
-      <button class="lnk" onclick="loadProducts()">Refresh</button> |
-      <button class="lnk" onclick="openAddModal()">Add item</button> |
-      <button class="lnk" onclick="openSettingsModal()">Settings</button>
-    </nav>
+  <div class="g-banner">
+    <div class="g-banner-t"><i class="ti ti-star"></i> Welcome to my Price Tracker! <i class="ti ti-star"></i></div>
+    <div class="g-banner-s">Your daily deal page since 2026</div>
   </div>
-  <div class="t-win">
-    <div class="w-title"><i class="ti ti-chart-line"></i> Price Tracker</div>
-    <div class="w-toolbar">
-      <button class="xbtn" onclick="openAddModal()"><i class="ti ti-plus"></i> Add item</button>
-      <button class="xbtn" onclick="openSettingsModal()"><i class="ti ti-settings"></i> Settings</button>
-      <button class="xbtn" onclick="loadProducts()"><i class="ti ti-refresh"></i> Refresh</button>
-    </div>
-  </div>
+  <div class="g-rainbow"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <nav class="g-links">
+    <button class="lnk" onclick="loadProducts()">Refresh</button> |
+    <button class="lnk" onclick="openAddModal()">Add item</button> |
+    <button class="lnk" onclick="openSettingsModal()">Settings</button>
+  </nav>
   <div class="stats">
     <div class="stat st-total"><b id="statTotal">0</b><span id="statTotalLbl">items</span></div>
-    <div class="stat st-hit"><b id="statHits">0</b><span class="t-geo">at target!</span><span class="t-win">at target</span></div>
+    <div class="stat st-hit"><b id="statHits">0</b><span>at target!</span></div>
     <div class="stat st-attn"><b id="statAttn">0</b><span>needs price</span></div>
   </div>
 </header>
 
 <div class="app">
   <div class="product-list" id="productList"></div>
-</div>
-
-<div class="taskbar t-win">
-  <button class="xbtn" onclick="openSettingsModal()"><i class="ti ti-brand-windows"></i> Start</button>
-  <span class="tb-sep"></span>
-  <span class="tb-task"><i class="ti ti-chart-line"></i> Price Tracker</span>
-  <span class="tb-clock" id="tbClock"></span>
 </div>
 
 <!-- Add / Edit modal -->
@@ -370,14 +226,6 @@
     <div class="mtitle"><span>Settings</span><button class="mclose" onclick="closeSettingsModal()" aria-label="Close"><i class="ti ti-x"></i></button></div>
     <div class="mbody">
       <div class="field">
-        <label>Look</label>
-        <div class="theme-opts" role="radiogroup" aria-label="Look">
-          <button type="button" class="xbtn theme-opt" data-theme-opt="geo" role="radio" onclick="setTheme('geo')"><i class="ti ti-check sel-ic"></i>GeoCities</button>
-          <button type="button" class="xbtn theme-opt" data-theme-opt="win" role="radio" onclick="setTheme('win')"><i class="ti ti-check sel-ic"></i>Windows 95</button>
-        </div>
-        <p class="field-hint">Applies right away. Saved on this device only.</p>
-      </div>
-      <div class="field">
         <label>ScraperAPI key</label>
         <input id="fScraperApiKey" type="password" placeholder="Enter your ScraperAPI key">
         <p class="field-hint" id="scraperApiKeyStatus"></p>
@@ -404,39 +252,10 @@ let products   = [];
 let editingId  = null;
 let checking   = new Set(); // product IDs currently being checked
 
-// ── Theme (GeoCities / Windows 95) ────────────────────────────────────────────
-const THEME_COLORS = { geo: '#FF0000', win: '#008080' };
-
-function getTheme() {
-  try { return localStorage.getItem('pt-theme') === 'win' ? 'win' : 'geo'; } catch { return 'geo'; }
-}
-
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = THEME_COLORS[t];
-  document.querySelectorAll('.theme-opt').forEach(b => {
-    const on = b.dataset.themeOpt === t;
-    b.classList.toggle('sel', on);
-    b.setAttribute('aria-checked', on);
-  });
-}
-
-function setTheme(t) {
-  try { localStorage.setItem('pt-theme', t); } catch { /* storage blocked — still applies this session */ }
-  applyTheme(t);
-}
-
-function tickClock() {
-  const el = document.getElementById('tbClock');
-  if (el) el.textContent = new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).toUpperCase();
-}
-
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
-  applyTheme(getTheme());
-  tickClock();
-  setInterval(tickClock, 30000);
+  // Clean up the old look-switcher preference (the Windows 95 option was removed)
+  try { localStorage.removeItem('pt-theme'); } catch { /* storage blocked */ }
   await loadProducts();
 }
 
@@ -530,14 +349,8 @@ function playFlipAnimation(firstRects) {
 
 const money = v => '$' + Number(v).toFixed(2);
 
-// "Hit!" starburst shown on target-hit cards (GeoCities look only)
-const BURST_SVG = `<svg class="burst t-geo" aria-hidden="true" width="60" height="60" viewBox="0 0 60 60"><polygon points="30,2 35.2,10.7 44,5.7 44.1,15.9 54.2,16 49.3,24.8 58,30 49.3,35.2 54.2,44 44.1,44.1 44,54.3 35.2,49.3 30,58 24.8,49.3 16,54.3 15.9,44.1 5.8,44 10.7,35.2 2,30 10.7,24.8 5.8,16 15.9,15.9 16,5.7 24.8,10.7" fill="#FFFF00" stroke="#FF0000" stroke-width="2"/><text x="30" y="35" text-anchor="middle" font-family="Impact,Anton,sans-serif" font-size="15" fill="#FF0000">Hit!</text></svg>`;
-
-function statusIcon(status, isActive) {
-  if (!isActive) return 'ti-player-pause';
-  return { target_hit: 'ti-circle-check', ok: 'ti-trending-down', needs_attention: 'ti-alert-triangle',
-           error: 'ti-circle-x', pending: 'ti-clock' }[status] || 'ti-clock';
-}
+// "Hit!" starburst shown on target-hit cards
+const BURST_SVG = `<svg class="burst" aria-hidden="true" width="60" height="60" viewBox="0 0 60 60"><polygon points="30,2 35.2,10.7 44,5.7 44.1,15.9 54.2,16 49.3,24.8 58,30 49.3,35.2 54.2,44 44.1,44.1 44,54.3 35.2,49.3 30,58 24.8,49.3 16,54.3 15.9,44.1 5.8,44 10.7,35.2 2,30 10.7,24.8 5.8,16 15.9,15.9 16,5.7 24.8,10.7" fill="#FFFF00" stroke="#FF0000" stroke-width="2"/><text x="30" y="35" text-anchor="middle" font-family="Impact,Anton,sans-serif" font-size="15" fill="#FF0000">Hit!</text></svg>`;
 
 function cardHtml(p) {
   const status     = p.status || 'pending';
@@ -548,43 +361,30 @@ function cardHtml(p) {
   const target     = Number(p.target_price);
   const priceStr   = hasPrice ? money(price) : '$--.--';
 
-  // One line of copy under the price (worded per look) plus an icon for the Windows look
-  let geoNote, winNote, noteIcon;
+  // One line of copy under the price
+  let note;
   if (!isActive) {
-    geoNote = winNote = 'Paused. Skipped by the daily check.';
-    noteIcon = 'ti-player-pause';
+    note = 'Paused. Skipped by the daily check.';
   } else if (status === 'target_hit' && hasPrice) {
-    const gap   = target - price;
-    const under = gap > 0.004 ? `${money(gap)} under your ${money(target)} target` : `right on your ${money(target)} target`;
-    geoNote  = `That is ${under}!!`;
-    winNote  = `Target hit! That is ${under}.`;
-    noteIcon = 'ti-info-circle';
+    const gap = target - price;
+    note = `That is ${gap > 0.004 ? `${money(gap)} under your ${money(target)} target` : `right on your ${money(target)} target`}!!`;
   } else if (status === 'needs_attention') {
-    geoNote  = `A price is missing! Your target is ${money(target)}.`;
-    winNote  = `A price is missing. Your target is ${money(target)}.`;
-    noteIcon = 'ti-alert-triangle';
+    note = `A price is missing! Your target is ${money(target)}.`;
   } else if (status === 'error') {
-    geoNote = winNote = 'The check failed. Try Check now.';
-    noteIcon = 'ti-circle-x';
+    note = 'The check failed. Try Check now.';
   } else if (status === 'pending' || !hasPrice) {
-    geoNote = winNote = `Not checked yet. Your target is ${money(target)}.`;
-    noteIcon = 'ti-clock';
+    note = `Not checked yet. Your target is ${money(target)}.`;
   } else {
-    geoNote = winNote = `${money(price - target)} to go until your ${money(target)} target.`;
-    noteIcon = 'ti-trending-down';
+    note = `${money(price - target)} to go until your ${money(target)} target.`;
   }
 
   // Distance-to-target meter: how close the current price is to the target (above-target only)
   let meter = '';
   if (isActive && hasPrice && price > target) {
     const pct = Math.max(0, Math.min(100, (target / price) * 100));
-    const on  = Math.round(pct / 5); // 20 blocks for the Windows look
     meter = `
-      <div class="meter">
-        <div class="meter-geo t-geo"><div style="width:${pct}%"></div></div>
-        <div class="meter-win t-win">${'<i></i>'.repeat(on)}${'<i class="e"></i>'.repeat(20 - on)}</div>
-        <div class="meter-lbl">${Math.round(pct)}% of the way to your target</div>
-      </div>`;
+      <div class="meter-bar"><div style="width:${pct}%"></div></div>
+      <div class="meter-lbl">${Math.round(pct)}% of the way to your target</div>`;
   }
 
   const checkedStr = p.last_checked_at
@@ -593,7 +393,7 @@ function cardHtml(p) {
 
   const checkBtnLabel = isChecking
     ? `<span class="spinner"></span>Checking…`
-    : `<i class="ti ti-refresh"></i><span class="t-geo">Check now!</span><span class="t-win">Check now</span>`;
+    : `<i class="ti ti-refresh"></i>Check now!`;
 
   const toggleTitle = isActive ? 'Pause: skip the daily check to save credits' : 'Resume daily checks';
   const toggle = `
@@ -607,30 +407,18 @@ function cardHtml(p) {
   return `
     <div class="card status-${status}${isActive ? '' : ' card-inactive'}" id="card-${p.id}">
       ${status === 'target_hit' && isActive ? BURST_SVG : ''}
-
-      <div class="tbar t-win">
-        <span class="tbar-title"><i class="ti ${statusIcon(status, isActive)}"></i><span>${escHtml(p.name)}</span></span>
-        <button class="tb-x" onclick="deleteProduct('${p.id}')" title="Delete" aria-label="Delete"><i class="ti ti-x"></i></button>
-      </div>
-
       <div class="card-body">
-        <div class="card-head t-geo">
-          <div>
-            <div class="card-name">${escHtml(p.name)}</div>
-            ${badge}
-          </div>
+        <div>
+          <div class="card-name">${escHtml(p.name)}</div>
+          ${badge}
         </div>
 
         <div class="price-big">${priceStr}</div>
-        <div class="price-note">
-          <i class="ti ${noteIcon} note-ic t-win"></i>
-          <span class="t-geo">${geoNote}</span><span class="t-win">${winNote}</span>
-        </div>
+        <div class="price-note">${note}</div>
 
         ${meter}
 
         <ul class="url-price-list">
-          <li class="u-head t-win"><span class="uh-store">Store</span><span class="uh-price">Price</span></li>
           ${urlPriceRows(p)}
         </ul>
 
@@ -642,7 +430,7 @@ function cardHtml(p) {
             ${toggle}
             <button class="xbtn" onclick="openEditModal('${p.id}')" title="Edit"><i class="ti ti-pencil"></i>Edit</button>
             <button class="xbtn" onclick="checkOne('${p.id}')" ${isChecking ? 'disabled' : ''}>${checkBtnLabel}</button>
-            <button class="xbtn t-geo" onclick="deleteProduct('${p.id}')" title="Delete"><i class="ti ti-trash"></i>Delete</button>
+            <button class="xbtn" onclick="deleteProduct('${p.id}')" title="Delete"><i class="ti ti-trash"></i>Delete</button>
           </div>
         </div>
       </div>
@@ -682,10 +470,7 @@ function urlPriceRows(p) {
     const showManual = price == null && checkedOnce && !busy;
     const manualInputHtml = showManual ? `
       <li class="url-manual">
-        <div class="mi-msg">
-          <i class="ti ti-alert-triangle"></i>
-          <span><span class="t-geo">No price found for ${escHtml(host)}! Enter it here:</span><span class="t-win">No price found for ${escHtml(host)}. Enter it by hand.</span></span>
-        </div>
+        <div class="mi-msg"><i class="ti ti-alert-triangle"></i> No price found for ${escHtml(host)}! Enter it here:</div>
         <div class="mi-row">
           <input type="number" min="0" step="0.01" id="manual-url-${p.id}-${i}"
                  placeholder="Price"
@@ -697,7 +482,7 @@ function urlPriceRows(p) {
     return `
       <li class="url-row${isBest ? ' best' : ''}">
         <a class="u-name" href="${escHtml(u)}" target="_blank" rel="noopener" title="${escHtml(u)}">${isBest ? '<i class="ti ti-star"></i>' : ''}${escHtml(host)}</a>
-        ${isBest ? '<span class="u-best t-geo">cheapest!</span>' : ''}
+        ${isBest ? '<span class="u-best">cheapest!</span>' : ''}
         ${methodHtml}
         ${priceHtml}
       </li>
@@ -798,7 +583,7 @@ function drawSparkline(p) {
     ? `<line class="c-target" x1="${-PAD}" y1="${targetY}" x2="${W + PAD}" y2="${targetY}"/>`
     : '';
 
-  // Faint grid, coloured per look by CSS
+  // Faint grid
   const grid = [H * 0.1, H / 2, H * 0.9].map(y => `<line class="c-grid" x1="${-PAD}" y1="${y}" x2="${W + PAD}" y2="${y}"/>`).join('')
              + [0.25, 0.5, 0.75].map(f => `<line class="c-grid" x1="${W * f}" y1="0" x2="${W * f}" y2="${H}"/>`).join('');
 
@@ -855,7 +640,6 @@ async function openSettingsModal() {
   const status = document.getElementById('scraperApiKeyStatus');
   input.value = '';
   status.textContent = 'Loading…';
-  applyTheme(getTheme()); // refresh which look is marked as selected
   document.getElementById('settingsOverlay').classList.add('open');
 
   try {
@@ -1051,10 +835,6 @@ function updateSubtitle() {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function statusLabel(s) {
-  return { ok:'On track', target_hit:'Target hit!', needs_attention:'Needs attention', error:'Error', pending:'Pending' }[s] || s;
-}
-
 function relTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
