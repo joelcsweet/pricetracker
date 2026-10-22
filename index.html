@@ -53,6 +53,10 @@
   .url-row .u-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
   .url-row .u-price { margin-left: auto; white-space: nowrap; }
   .u-method, .u-best { white-space: nowrap; }
+  @media (max-width: 480px) {
+    .url-row { flex-wrap: wrap; }
+    .url-row .u-method { order: 5; flex-basis: 100%; }
+  }
   .url-manual { list-style: none; }
   .url-manual .mi-row { display: flex; gap: 6px; margin-top: 4px; }
   .url-manual input { flex: 1; min-width: 0; outline: none; font: inherit; color: #000; background: #fff; }
