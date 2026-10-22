@@ -5,8 +5,8 @@
   "start_url": "/pricetracker/",
   "scope": "/pricetracker/",
   "display": "standalone",
-  "background_color": "#f4f3f8",
-  "theme_color": "#7c3aed",
+  "background_color": "#0A0A3C",
+  "theme_color": "#FF0000",
   "icons": [
     {
       "src": "icon-192.png",
