@@ -82,7 +82,6 @@ export function buildAlertHtml({ product, price, urlResults = [] }) {
 
    <tr><td align="center" style="padding:14px 8px 0;font-family:${COMIC};font-size:13px;color:#ffffff">
      <a href="${APP_URL}" style="color:#99ccff;text-decoration:underline">Open my Price Tracker</a>
-     <div style="color:#c0c0c0;margin-top:6px">Sent by Price Tracker. You only get one of these per price drop.</div>
    </td></tr>
 
   </table>
