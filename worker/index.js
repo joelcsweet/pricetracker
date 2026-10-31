@@ -343,7 +343,7 @@ export async function checkProduct(product, env, { individualCheck = false } = {
         }
 
         if (shouldAlert) {
-          await sendAlert({ product, price }, env);
+          await sendAlert({ product, price, urlResults }, env);
           await env.DB.prepare(
             `INSERT INTO alerts_sent (product_id, price, sent_at) VALUES (?, ?, ?)`
           ).bind(product.id, price, now).run();
