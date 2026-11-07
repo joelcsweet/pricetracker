@@ -107,7 +107,7 @@
   .url-manual { list-style: none; padding: 6px; background: #FF99CC; border-bottom: 2px solid #000; }
   .mi-msg { color: #C00; font-size: 14px; }
   .mi-row { display: flex; gap: 6px; margin-top: 4px; }
-  .mi-row input { flex: 1; min-width: 0; }
+  .mi-row .inp { flex: 1; min-width: 0; }
 
   /* Chart */
   .chart-wrap { margin-top: 8px; }
@@ -149,11 +149,12 @@
   .mbody { padding: 14px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; margin-bottom: 4px; }
-  .field input, .field textarea, .mi-row input {
-    width: 100%; outline: none; font: inherit; color: #000; background: #fff;
+  .inp {
+    display: block; width: 100%; outline: none; font: inherit; color: #000; background: #fff; overflow-wrap: anywhere; white-space: pre-wrap; -webkit-user-select: text; user-select: text;
     border: 3px solid; border-color: #808080 #fff #fff #808080; padding: 5px 6px;
   }
-  .field textarea { resize: vertical; min-height: 90px; }
+  .inp-multi { min-height: 90px; }
+  .inp:empty::before { content: attr(data-ph); color: #757575; white-space: pre-line; }
   .masked { -webkit-text-security: disc; }
   .field-hint { font-size: 12px; margin-top: 4px; color: #444; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
@@ -202,16 +203,16 @@
     <div class="mbody">
       <div class="field">
         <label>Product name</label>
-        <input id="fName" type="text" name="pt-item-label" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="e.g. Sony WH-1000XM5">
+        <div class="inp" id="fName" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" aria-label="Product name" enterkeyhint="next" data-ph="e.g. Sony WH-1000XM5"></div>
       </div>
       <div class="field">
         <label>URLs — one per line</label>
-        <textarea id="fUrl" name="pt-item-links" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="https://www.amazon.com.au/…&#10;https://www.jbhifi.com.au/…"></textarea>
+        <div class="inp inp-multi" id="fUrl" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" aria-label="URLs" aria-multiline="true" data-ph="https://www.amazon.com.au/…&#10;https://www.jbhifi.com.au/…"></div>
         <p class="field-hint">Paste one URL per line. All will be checked; the lowest price found is used.</p>
       </div>
       <div class="field">
         <label>Target price (AUD)</label>
-        <input id="fTarget" type="text" inputmode="decimal" name="pt-item-goal" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="e.g. 299.00">
+        <div class="inp" id="fTarget" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" inputmode="decimal" aria-label="Target price" data-ph="e.g. 299.00"></div>
       </div>
       <div class="modal-actions">
         <button class="xbtn" onclick="closeModal()">Cancel</button>
@@ -228,7 +229,7 @@
     <div class="mbody">
       <div class="field">
         <label>ScraperAPI key</label>
-        <input id="fScraperApiKey" type="text" name="pt-service-token" class="masked" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" placeholder="Enter your ScraperAPI key">
+        <div class="inp masked" id="fScraperApiKey" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" aria-label="ScraperAPI key" data-ph="Enter your ScraperAPI key"></div>
         <p class="field-hint" id="scraperApiKeyStatus"></p>
       </div>
       <div class="modal-actions">
@@ -253,6 +254,36 @@ let products   = [];
 let editingId  = null;
 let checking   = new Set(); // product IDs currently being checked
 
+// ── Text boxes ────────────────────────────────────────────────────────────────
+// The inputs are contenteditable boxes, not <input>/<textarea>, so Android's
+// keyboard doesn't offer password / payment / address autofill for them.
+function getVal(el) {
+  if (!el) return '';
+  const raw = (el.innerText || '').replace(/\u00a0/g, ' ');
+  return el.classList.contains('inp-multi') ? raw : raw.replace(/\s*\n\s*/g, ' ');
+}
+
+function setVal(el, v) { el.textContent = String(v ?? ''); }
+
+// Single-line boxes: Enter must not insert a line break
+document.addEventListener('keydown', e => {
+  const el = e.target;
+  if (e.key === 'Enter' && el.classList?.contains('inp') && !el.classList.contains('inp-multi')) e.preventDefault();
+});
+// Keep the placeholder working: browsers leave a stray <br> after the text is deleted
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.classList?.contains('inp') && !el.textContent) el.innerHTML = '';
+});
+// Pasting always inserts plain text
+document.addEventListener('paste', e => {
+  const el = e.target;
+  if (!el.classList?.contains('inp')) return;
+  e.preventDefault();
+  let text = (e.clipboardData || window.clipboardData).getData('text');
+  if (!el.classList.contains('inp-multi')) text = text.replace(/\s*\n\s*/g, ' ');
+  document.execCommand('insertText', false, text);
+});
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
   // Clean up the old look-switcher preference (the Windows 95 option was removed)
@@ -440,9 +471,9 @@ function urlPriceRows(p) {
       <li class="url-manual">
         <div class="mi-msg"><i class="ti ti-alert-triangle"></i> No price found for ${escHtml(host)}! Enter it here:</div>
         <div class="mi-row">
-          <input type="text" inputmode="decimal" name="pt-manual-price" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" id="manual-url-${p.id}-${i}"
-                 placeholder="Price"
-                 onkeydown="if(event.key==='Enter')saveManualUrlPrice('${p.id}',${i})">
+          <div class="inp" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" inputmode="decimal" aria-label="Price" id="manual-url-${p.id}-${i}"
+                 data-ph="Price"
+                 onkeydown="if(event.key==='Enter')saveManualUrlPrice('${p.id}',${i})"></div>
           <button class="xbtn" onclick="saveManualUrlPrice('${p.id}',${i})">Save</button>
         </div>
       </li>` : '';
@@ -460,7 +491,7 @@ function urlPriceRows(p) {
 
 async function saveManualUrlPrice(productId, urlIdx) {
   const input = document.getElementById(`manual-url-${productId}-${urlIdx}`);
-  const price = parseFloat(input?.value);
+  const price = parseFloat(getVal(input));
   if (!input || isNaN(price) || price <= 0) { showToast('Enter a valid price.'); return; }
 
   const p       = products.find(x => x.id === productId);
@@ -578,9 +609,9 @@ function drawSparkline(p) {
 function openAddModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'Add product';
-  document.getElementById('fName').value   = '';
-  document.getElementById('fUrl').value    = '';
-  document.getElementById('fTarget').value = '';
+  setVal(document.getElementById('fName'), '');
+  setVal(document.getElementById('fUrl'), '');
+  setVal(document.getElementById('fTarget'), '');
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('fName').focus(), 50);
 }
@@ -590,9 +621,9 @@ function openEditModal(id) {
   if (!p) return;
   editingId = id;
   document.getElementById('modalTitle').textContent = 'Edit product';
-  document.getElementById('fName').value   = p.name;
-  document.getElementById('fUrl').value    = p.url;
-  document.getElementById('fTarget').value = p.target_price;
+  setVal(document.getElementById('fName'), p.name);
+  setVal(document.getElementById('fUrl'), p.url);
+  setVal(document.getElementById('fTarget'), p.target_price);
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('fName').focus(), 50);
 }
@@ -606,7 +637,7 @@ function closeModal(e) {
 async function openSettingsModal() {
   const input  = document.getElementById('fScraperApiKey');
   const status = document.getElementById('scraperApiKeyStatus');
-  input.value = '';
+  setVal(input, '');
   status.textContent = 'Loading…';
   document.getElementById('settingsOverlay').classList.add('open');
 
@@ -627,7 +658,7 @@ function closeSettingsModal(e) {
 
 async function saveScraperApiKey() {
   const input = document.getElementById('fScraperApiKey');
-  const key   = input.value.trim();
+  const key   = getVal(input).trim();
   if (!key) { showToast('Enter a key first.'); return; }
 
   const btn = document.getElementById('settingsSaveBtn');
@@ -647,9 +678,9 @@ async function saveScraperApiKey() {
 }
 
 async function saveProduct() {
-  const name         = document.getElementById('fName').value.trim();
-  const url          = document.getElementById('fUrl').value.trim().split('\n').map(u => u.trim()).filter(Boolean).join('\n');
-  const target_price = parseFloat(document.getElementById('fTarget').value);
+  const name         = getVal(document.getElementById('fName')).trim();
+  const url          = getVal(document.getElementById('fUrl')).trim().split('\n').map(u => u.trim()).filter(Boolean).join('\n');
+  const target_price = parseFloat(getVal(document.getElementById('fTarget')));
 
   if (!name || !url || isNaN(target_price) || target_price <= 0) {
     showToast('Please fill in all fields with valid values.');
