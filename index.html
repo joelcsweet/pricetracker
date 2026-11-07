@@ -259,7 +259,8 @@ let checking   = new Set(); // product IDs currently being checked
 // keyboard doesn't offer password / payment / address autofill for them.
 function getVal(el) {
   if (!el) return '';
-  const raw = (el.innerText || '').replace(/\u00a0/g, ' ');
+  // textContent, not innerText: innerText returns the masked dots for the key box
+  const raw = (el.textContent || '').replace(/\u00a0/g, ' ');
   return el.classList.contains('inp-multi') ? raw : raw.replace(/\s*\n\s*/g, ' ');
 }
 
