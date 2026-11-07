@@ -259,9 +259,10 @@ let checking   = new Set(); // product IDs currently being checked
 // keyboard doesn't offer password / payment / address autofill for them.
 function getVal(el) {
   if (!el) return '';
-  // textContent, not innerText: innerText returns the masked dots for the key box
-  const raw = (el.textContent || '').replace(/\u00a0/g, ' ');
-  return el.classList.contains('inp-multi') ? raw : raw.replace(/\s*\n\s*/g, ' ');
+  // Single-line boxes use textContent (innerText would return the masked dots
+  // for the key box). The URL box uses innerText so its line breaks survive.
+  if (el.classList.contains('inp-multi')) return (el.innerText || '').replace(/\u00a0/g, ' ');
+  return (el.textContent || '').replace(/\u00a0/g, ' ').replace(/\s*\n\s*/g, ' ');
 }
 
 function setVal(el, v) { el.textContent = String(v ?? ''); }
