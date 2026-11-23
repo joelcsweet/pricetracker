@@ -150,24 +150,24 @@
   /* ── Modals ──────────────────────────────────────────────────────────────── */
   .modal-overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
-    z-index: 100; align-items: center; justify-content: center; padding: 16px;
+    z-index: 100; align-items: center; justify-content: center; padding: 8px;
   }
   .modal-overlay.open { display: flex; }
-  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
-  .mtitle { display: flex; justify-content: space-between; align-items: center; background: #F00; color: #FF0; font: 400 22px/1 Impact, Anton, sans-serif; padding: 8px 10px; }
+  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); overflow: auto; overscroll-behavior: contain; background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
+  .mtitle { display: flex; justify-content: space-between; align-items: center; background: #F00; color: #FF0; font: 400 22px/1 Impact, Anton, sans-serif; padding: 6px 10px; }
   .mclose { display: inline-flex; align-items: center; justify-content: center; color: #FF0; font-size: 20px; }
-  .mbody { padding: 14px; }
-  .field { margin-bottom: 12px; }
-  .field label { display: block; margin-bottom: 4px; }
+  .mbody { padding: 10px 12px; }
+  .field { margin-bottom: 8px; }
+  .field label { display: block; margin-bottom: 2px; }
   .inp {
     display: block; width: 100%; outline: none; font: inherit; color: #000; background: #fff; overflow-wrap: anywhere; white-space: pre-wrap; -webkit-user-select: text; user-select: text;
     border: 3px solid; border-color: #808080 #fff #fff #808080; padding: 5px 6px;
   }
-  .inp-multi { min-height: 90px; }
+  .inp-multi { min-height: 58px; }
   .inp:empty::before { content: attr(data-ph); color: #757575; white-space: pre-line; }
   .masked { -webkit-text-security: disc; }
-  .field-hint { font-size: 12px; margin-top: 4px; color: #444; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+  .field-hint { font-size: 11px; line-height: 1.25; margin-top: 2px; color: #444; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 
   .empty { text-align: center; padding: 50px 16px; color: #fff; }
   .empty p { font-size: 16px; line-height: 1.6; }
@@ -639,11 +639,12 @@ function drawSparkline(p) {
 }
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
-// Focus the first field on desktop only. On a phone, auto-focus opens the keyboard
-// straight away and it covers the form.
+// Put the cursor in the first box as the form opens. This has to happen straight
+// away, inside the tap, or Android won't open the keyboard for it.
 function focusFirstField() {
-  if (window.matchMedia('(pointer: coarse)').matches) return;
-  setTimeout(() => document.getElementById('fName').focus(), 50);
+  const el = document.getElementById('fName');
+  el.focus();
+  if (document.activeElement !== el) setTimeout(() => el.focus(), 60); // fallback if the box wasn't laid out yet
 }
 
 const MODE_HINTS = {
