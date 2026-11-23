@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Price Tracker</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#FF0000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -131,7 +133,11 @@
     background: #C0C0C0; border: 3px solid; border-color: #fff #808080 #808080 #fff;
     padding: 2px 10px; font-size: 14px; color: #000;
   }
-  .xbtn:active { border-color: #808080 #fff #fff #808080; }
+  .xbtn:active, .xbtn.sel { border-color: #808080 #fff #fff #808080; }
+  .xbtn.sel { background: #FF0; }
+  .mode-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mode-opt .sel-ic { visibility: hidden; }
+  .mode-opt.sel .sel-ic { visibility: visible; }
   .chk { display: inline-flex; align-items: center; gap: 6px; }
   .chk-box { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #fff; font-size: 12px; color: #000; flex-shrink: 0; border: 3px solid; border-color: #808080 #fff #fff #808080; }
   .chk-box i { visibility: hidden; }
@@ -211,6 +217,15 @@
         <p class="field-hint">Paste one URL per line. All will be checked; the lowest price found is used.</p>
       </div>
       <div class="field">
+        <label>Alert me when</label>
+        <div class="mode-opts" role="radiogroup" aria-label="Alert me when">
+          <button type="button" class="xbtn mode-opt" data-mode="target" role="radio" onclick="setAlertMode('target')"><i class="ti ti-check sel-ic"></i>Target hit</button>
+          <button type="button" class="xbtn mode-opt" data-mode="drop" role="radio" onclick="setAlertMode('drop')"><i class="ti ti-check sel-ic"></i>Any price drop</button>
+          <button type="button" class="xbtn mode-opt" data-mode="both" role="radio" onclick="setAlertMode('both')"><i class="ti ti-check sel-ic"></i>Both</button>
+        </div>
+        <p class="field-hint" id="modeHint"></p>
+      </div>
+      <div class="field" id="targetField">
         <label>Target price (AUD)</label>
         <div class="inp" id="fTarget" contenteditable="plaintext-only" role="textbox" spellcheck="false" autocapitalize="off" inputmode="decimal" aria-label="Target price" data-ph="e.g. 299.00"></div>
       </div>
@@ -253,6 +268,7 @@ const API_SECRET = 'pricetracker-joelsweet-2026';
 let products   = [];
 let editingId  = null;
 let checking   = new Set(); // product IDs currently being checked
+let alertMode  = 'target';  // alert mode chosen in the add/edit form
 
 // ── Text boxes ────────────────────────────────────────────────────────────────
 // The inputs are contenteditable boxes, not <input>/<textarea>, so Android's
@@ -360,28 +376,30 @@ function cardHtml(p) {
   const hasPrice   = p.last_price != null;
   const price      = hasPrice ? Number(p.last_price) : null;
   const target     = Number(p.target_price);
+  const mode       = p.alert_mode || 'target';
+  const hasTarget  = mode !== 'drop' && target > 0;
   const priceStr   = hasPrice ? money(price) : '$--.--';
 
   // One line of copy under the price
   let note;
   if (!isActive) {
     note = 'Paused. Skipped by the daily check.';
-  } else if (status === 'target_hit' && hasPrice) {
+  } else if (status === 'target_hit' && hasPrice && hasTarget) {
     const gap = target - price;
     note = `That is ${gap > 0.004 ? `${money(gap)} under your ${money(target)} target` : `right on your ${money(target)} target`}!!`;
   } else if (status === 'needs_attention') {
-    note = `A price is missing! Your target is ${money(target)}.`;
+    note = hasTarget ? `A price is missing! Your target is ${money(target)}.` : 'A price is missing! Enter it below.';
   } else if (status === 'error') {
     note = 'The check failed. Try Check now.';
   } else if (status === 'pending' || !hasPrice) {
-    note = `Not checked yet. Your target is ${money(target)}.`;
+    note = hasTarget ? `Not checked yet. Your target is ${money(target)}.` : 'Not checked yet. Watching for price drops.';
   } else {
-    note = `${money(price - target)} to go until your ${money(target)} target.`;
+    note = hasTarget\n      ? `${money(price - target)} to go until your ${money(target)} target.${mode === 'both' ? ' Also alerting on any drop.' : ''}`\n      : 'Watching for any price drop.';
   }
 
   // Distance-to-target meter: how close the current price is to the target (above-target only)
   let meter = '';
-  if (isActive && hasPrice && price > target) {
+  if (isActive && hasPrice && hasTarget && price > target) {
     const pct = Math.max(0, Math.min(100, (target / price) * 100));
     meter = `
       <div class="meter-bar"><div style="width:${pct}%"></div></div>
@@ -403,7 +421,7 @@ function cardHtml(p) {
       <span class="chk-box"><i class="ti ti-check"></i></span><span>Check daily</span>
     </button>`;
 
-  const badge = isActive ? badgeHtml(status) : `<span class="badge badge-paused">Paused</span>`;
+  const badge = isActive ? badgeHtml(status, hasTarget) : `<span class="badge badge-paused">Paused</span>`;
 
   return `
     <div class="card status-${status}${isActive ? '' : ' card-inactive'}" id="card-${p.id}">
@@ -527,7 +545,7 @@ async function saveManualUrlPrice(productId, urlIdx) {
   }
 }
 
-function badgeHtml(status) {
+function badgeHtml(status, hasTarget = true) {
   const map = {
     ok:              ['badge-ok',        '↑ Above target'],
     target_hit:      ['badge-hit',       '✓ Target hit!'],
@@ -535,6 +553,7 @@ function badgeHtml(status) {
     error:           ['badge-error',     '✕ Check failed'],
     pending:         ['badge-pending',   '· Not checked yet'],
   };
+  if (status === 'ok' && !hasTarget) return '<span class="badge badge-ok">Watching for drops</span>';
   const [cls, label] = map[status] || map.pending;
   return `<span class="badge ${cls}">${label}</span>`;
 }
@@ -608,12 +627,30 @@ function drawSparkline(p) {
 }
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
+const MODE_HINTS = {
+  target: 'Email me when the price reaches my target.',
+  drop:   'Email me whenever the price falls below the last price we saw. No target needed.',
+  both:   'Email me for either. You get at most one email per check.',
+};
+
+function setAlertMode(m) {
+  alertMode = MODE_HINTS[m] ? m : 'target';
+  document.querySelectorAll('.mode-opt').forEach(b => {
+    const on = b.dataset.mode === alertMode;
+    b.classList.toggle('sel', on);
+    b.setAttribute('aria-checked', on);
+  });
+  document.getElementById('targetField').style.display = alertMode === 'drop' ? 'none' : '';
+  document.getElementById('modeHint').textContent = MODE_HINTS[alertMode];
+}
+
 function openAddModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'Add product';
   setVal(document.getElementById('fName'), '');
   setVal(document.getElementById('fUrl'), '');
   setVal(document.getElementById('fTarget'), '');
+  setAlertMode('target');
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('fName').focus(), 50);
 }
@@ -625,7 +662,8 @@ function openEditModal(id) {
   document.getElementById('modalTitle').textContent = 'Edit product';
   setVal(document.getElementById('fName'), p.name);
   setVal(document.getElementById('fUrl'), p.url);
-  setVal(document.getElementById('fTarget'), p.target_price);
+  setVal(document.getElementById('fTarget'), Number(p.target_price) > 0 ? p.target_price : '');
+  setAlertMode(p.alert_mode || 'target');
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('fName').focus(), 50);
 }
@@ -682,9 +720,10 @@ async function saveScraperApiKey() {
 async function saveProduct() {
   const name         = getVal(document.getElementById('fName')).trim();
   const url          = getVal(document.getElementById('fUrl')).trim().split('\n').map(u => u.trim()).filter(Boolean).join('\n');
-  const target_price = parseFloat(getVal(document.getElementById('fTarget')));
+  const mode         = alertMode;
+  const target_price = mode === 'drop' ? 0 : parseFloat(getVal(document.getElementById('fTarget')));
 
-  if (!name || !url || isNaN(target_price) || target_price <= 0) {
+  if (!name || !url || (mode !== 'drop' && (isNaN(target_price) || target_price <= 0))) {
     showToast('Please fill in all fields with valid values.');
     return;
   }
@@ -695,27 +734,27 @@ async function saveProduct() {
 
   try {
     if (editingId) {
-      const oldTarget = products.find(x => x.id === editingId)?.target_price;
+      const old     = products.find(x => x.id === editingId);
       const updated = await api(`/products/${editingId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name, url, target_price }),
+        body: JSON.stringify({ name, url, target_price, alert_mode: mode }),
       });
       const idx = products.findIndex(x => x.id === editingId);
       if (idx >= 0) products[idx] = { ...products[idx], ...updated };
 
-      // Auto-check if target price changed
-      if (Number(target_price) !== Number(oldTarget)) {
+      // Auto-check if the alert mode or target changed, so the status is re-worked out
+      if (mode !== (old?.alert_mode || 'target') || (mode !== 'drop' && Number(target_price) !== Number(old?.target_price))) {
         document.getElementById('modalOverlay').classList.remove('open');
         render();
         updateSubtitle();
-        showToast('Target changed — running new check…');
+        showToast('Alerts changed — running new check…');
         checkOne(editingId);
         return;
       }
     } else {
       const created = await api('/products', {
         method: 'POST',
-        body: JSON.stringify({ name, url, target_price }),
+        body: JSON.stringify({ name, url, target_price, alert_mode: mode }),
       });
       products.unshift(created);
     }

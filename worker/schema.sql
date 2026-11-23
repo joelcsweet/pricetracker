@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
   -- status values: pending | ok | target_hit | needs_attention | error
   extraction_method TEXT,                    -- which cascade step succeeded
   active          INTEGER NOT NULL DEFAULT 1, -- 0 = paused, skipped by checks
+  alert_mode      TEXT NOT NULL DEFAULT 'target', -- target | drop | both (drop = no target, stored as 0)
   created_at      TEXT NOT NULL
 );
 

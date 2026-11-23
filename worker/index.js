@@ -13,6 +13,7 @@
 import { extract }     from './extract.js';
 import { sendAlert }   from './email.js';
 import { runChecks }   from './checker.js';
+import { normaliseMode, targetOn, dropOn, isPriceDrop } from './alerts.js';
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
@@ -99,17 +100,24 @@ async function getProducts(env) {
 
 async function addProduct(request, env) {
   const body = await request.json().catch(() => null);
-  if (!body?.name || !body?.url || body?.target_price == null) {
-    return respond({ error: 'name, url, and target_price are required' }, 400);
+  if (!body?.name || !body?.url) {
+    return respond({ error: 'name and url are required' }, 400);
+  }
+
+  // 'drop' mode has no target (stored as 0); the other modes need one
+  const mode   = normaliseMode(body.alert_mode);
+  const target = targetOn(mode) ? Number(body.target_price) : 0;
+  if (targetOn(mode) && !(target > 0)) {
+    return respond({ error: 'a target price is required' }, 400);
   }
 
   const id  = crypto.randomUUID();
   const now = new Date().toISOString();
 
   await env.DB.prepare(
-    `INSERT INTO products (id, name, url, target_price, currency, status, created_at)
-     VALUES (?, ?, ?, ?, ?, 'pending', ?)`
-  ).bind(id, body.name, body.url, Number(body.target_price), body.currency || 'AUD', now).run();
+    `INSERT INTO products (id, name, url, target_price, alert_mode, currency, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`
+  ).bind(id, body.name, body.url, target, mode, body.currency || 'AUD', now).run();
 
   // Kick off an immediate first check (don't await — return fast)
   const { results } = await env.DB.prepare(
@@ -133,6 +141,7 @@ async function editProduct(request, env, id) {
   if (body.status       != null) { fields.push('status = ?');       values.push(body.status); }
   if (body.url_results  != null) { fields.push('url_results = ?');  values.push(body.url_results); }
   if (body.active       != null) { fields.push('active = ?');       values.push(body.active ? 1 : 0); }
+  if (body.alert_mode   != null) { fields.push('alert_mode = ?');   values.push(normaliseMode(body.alert_mode)); }
 
   if (fields.length === 0) return respond({ error: 'Nothing to update' }, 400);
 
@@ -175,7 +184,7 @@ async function saveManualPrice(request, env, id) {
   const product   = results[0];
   const price     = Number(body.price);
   const now       = new Date().toISOString();
-  let   newStatus  = price <= product.target_price ? 'target_hit' : 'ok';
+  let   newStatus  = targetOn(product.alert_mode) && price <= product.target_price ? 'target_hit' : 'ok';
 
   // Stamp each manual entry with today's date so carry-forward can check it
   let urlResults = body.url_results ?? product.url_results;
@@ -318,10 +327,13 @@ export async function checkProduct(product, env, { individualCheck = false } = {
     }
 
     const anyMissing = urlResults.some(r => r.price == null);
+    const wantTarget = targetOn(product.alert_mode);
+    const wantDrop   = dropOn(product.alert_mode);
+    let targetEmailed = false;
 
     if (price != null) {
       // Determine status
-      if (price <= product.target_price) {
+      if (wantTarget && price <= product.target_price) {
         status = 'target_hit';
 
         // Alert once per "dip": skip only if an alert was already sent and the
@@ -347,6 +359,7 @@ export async function checkProduct(product, env, { individualCheck = false } = {
           await env.DB.prepare(
             `INSERT INTO alerts_sent (product_id, price, sent_at) VALUES (?, ?, ?)`
           ).bind(product.id, price, now).run();
+          targetEmailed = true;
         }
       } else {
         status = 'ok';
@@ -359,10 +372,29 @@ export async function checkProduct(product, env, { individualCheck = false } = {
       if (anyMissing && status === 'ok') {
         status = 'needs_attention';
       } else {
+        // The last complete price, read before this check adds its own row
+        let previous = null;
+        if (wantDrop) {
+          const { results: last } = await env.DB.prepare(
+            `SELECT price FROM price_history WHERE product_id = ? ORDER BY checked_at DESC, id DESC LIMIT 1`
+          ).bind(product.id).all();
+          previous = last[0]?.price ?? null;
+        }
+
         // Write history row only once we have a complete picture
         await env.DB.prepare(
           `INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)`
         ).bind(product.id, price, now).run();
+
+        // Price-drop alert: only on a complete check, and not if the target email
+        // already went out for this same check. A failed send must not fail the check.
+        if (wantDrop && !anyMissing && !targetEmailed && isPriceDrop(previous, price)) {
+          try {
+            await sendAlert({ product, price, urlResults, kind: 'drop', previousPrice: previous }, env);
+          } catch (err) {
+            console.error(`drop alert failed for ${product.id}:`, err.message);
+          }
+        }
       }
     } else {
       status = 'needs_attention';
