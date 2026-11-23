@@ -140,8 +140,7 @@
   .xbtn:active, .xbtn.sel { border-color: #808080 #fff #fff #808080; }
   .xbtn.sel { background: #FF0; }
   .mode-opts { display: flex; gap: 6px; flex-wrap: wrap; }
-  .mode-opt .sel-ic { visibility: hidden; }
-  .mode-opt.sel .sel-ic { visibility: visible; }
+  .mode-opt .sel-ic { display: none; } /* the yellow pressed look already marks the selected option */
   .chk { display: inline-flex; align-items: center; gap: 6px; }
   .chk-box { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #fff; font-size: 12px; color: #000; flex-shrink: 0; border: 3px solid; border-color: #808080 #fff #fff #808080; }
   .chk-box i { visibility: hidden; }
