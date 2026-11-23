@@ -394,7 +394,9 @@ function cardHtml(p) {
   } else if (status === 'pending' || !hasPrice) {
     note = hasTarget ? `Not checked yet. Your target is ${money(target)}.` : 'Not checked yet. Watching for price drops.';
   } else {
-    note = hasTarget\n      ? `${money(price - target)} to go until your ${money(target)} target.${mode === 'both' ? ' Also alerting on any drop.' : ''}`\n      : 'Watching for any price drop.';
+    note = hasTarget
+      ? `${money(price - target)} to go until your ${money(target)} target.${mode === 'both' ? ' Also alerting on any drop.' : ''}`
+      : 'Watching for any price drop.';
   }
 
   // Distance-to-target meter: how close the current price is to the target (above-target only)
