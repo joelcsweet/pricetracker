@@ -1,4 +1,4 @@
-const CACHE = 'pricetracker-v2';
+const CACHE = 'pricetracker-v3';
 const PRECACHE = ['/pricetracker/', '/pricetracker/index.html'];
 
 self.addEventListener('install', e => {
