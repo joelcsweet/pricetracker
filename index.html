@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Price Tracker</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -17,7 +17,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  html { -webkit-tap-highlight-color: transparent; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+  a, label, .card, .chk, .xbtn { -webkit-tap-highlight-color: transparent; }
+  :focus:not(:focus-visible) { outline: none; }
+  button:focus-visible, a:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
   button:disabled { opacity: .55; cursor: not-allowed; }
   i.ti { line-height: 1; }
 
@@ -149,7 +153,7 @@
     z-index: 100; align-items: center; justify-content: center; padding: 16px;
   }
   .modal-overlay.open { display: flex; }
-  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow: auto; background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
+  .modal { width: 100%; max-width: 460px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; background: #C0C0C0; border: 4px solid; border-color: #fff #808080 #808080 #fff; font-size: 15px; color: #000; }
   .mtitle { display: flex; justify-content: space-between; align-items: center; background: #F00; color: #FF0; font: 400 22px/1 Impact, Anton, sans-serif; padding: 8px 10px; }
   .mclose { display: inline-flex; align-items: center; justify-content: center; color: #FF0; font-size: 20px; }
   .mbody { padding: 14px; }
@@ -301,6 +305,12 @@ document.addEventListener('paste', e => {
   let text = (e.clipboardData || window.clipboardData).getData('text');
   if (!el.classList.contains('inp-multi')) text = text.replace(/\s*\n\s*/g, ' ');
   document.execCommand('insertText', false, text);
+});
+// Keep a tapped field visible once the keyboard has opened
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (!el.classList?.contains('inp')) return;
+  setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
 });
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
@@ -629,6 +639,13 @@ function drawSparkline(p) {
 }
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
+// Focus the first field on desktop only. On a phone, auto-focus opens the keyboard
+// straight away and it covers the form.
+function focusFirstField() {
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+  setTimeout(() => document.getElementById('fName').focus(), 50);
+}
+
 const MODE_HINTS = {
   target: 'Email me when the price reaches my target.',
   drop:   'Email me whenever the price falls below the last price we saw. No target needed.',
@@ -654,7 +671,7 @@ function openAddModal() {
   setVal(document.getElementById('fTarget'), '');
   setAlertMode('target');
   document.getElementById('modalOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('fName').focus(), 50);
+  focusFirstField();
 }
 
 function openEditModal(id) {
@@ -667,7 +684,7 @@ function openEditModal(id) {
   setVal(document.getElementById('fTarget'), Number(p.target_price) > 0 ? p.target_price : '');
   setAlertMode(p.alert_mode || 'target');
   document.getElementById('modalOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('fName').focus(), 50);
+  focusFirstField();
 }
 
 function closeModal(e) {
